@@ -4,13 +4,15 @@ import Leaderboard from './pages/Leaderboard.jsx'
 import Charts from './pages/Charts.jsx'
 import Science from './pages/Science.jsx'
 import About from './pages/About.jsx'
+import Architecture from './pages/Architecture.jsx'
 
 const TABS = [
-  { id: 'predictor',   label: 'Predictor' },
-  { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'charts',      label: 'Demand Patterns' },
-  { id: 'science',     label: 'ML & Science' },
-  { id: 'about',       label: 'About the Data' },
+  { id: 'predictor',    label: 'Predictor' },
+  { id: 'leaderboard',  label: 'Leaderboard' },
+  { id: 'charts',       label: 'Demand Patterns' },
+  { id: 'science',      label: 'ML & Science' },
+  { id: 'architecture', label: 'Architecture' },
+  { id: 'about',        label: 'About the Data' },
 ]
 
 export default function App() {
@@ -37,11 +39,12 @@ export default function App() {
       </nav>
 
       <main className="content">
-        {tab === 'predictor'   && <Predictor />}
-        {tab === 'leaderboard' && <Leaderboard />}
-        {tab === 'charts'      && <Charts />}
-        {tab === 'science'     && <Science />}
-        {tab === 'about'       && <About />}
+        {tab === 'predictor'    && <Predictor />}
+        {tab === 'leaderboard'  && <Leaderboard />}
+        {tab === 'charts'       && <Charts />}
+        {tab === 'science'      && <Science />}
+        {tab === 'architecture' && <Architecture />}
+        {tab === 'about'        && <About />}
       </main>
     </div>
   )
