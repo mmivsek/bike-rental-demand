@@ -29,16 +29,35 @@ body {
 
 /* ── Header ── */
 .header {
-  background: var(--dark);
+  position: relative;
   color: white;
-  padding: 14px 28px;
+  padding: 0 28px;
+  height: 64px;
   display: flex;
   align-items: center;
   gap: 14px;
+  background-size: cover;
+  background-position: center 40%;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+/* fading dark overlay — darker on the left (title side), fades to transparent right */
+.header-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(20,22,30,0.78) 0%, rgba(20,22,30,0.45) 55%, rgba(20,22,30,0.15) 100%);
+  pointer-events: none;
+}
+.header-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 1;
 }
 .header-icon { font-size: 1.6rem; }
-.header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
-.header-sub { font-size: 0.8rem; opacity: 0.55; margin-left: auto; letter-spacing: 0.02em; }
+.header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.header-sub { position: relative; z-index: 1; font-size: 0.8rem; opacity: 0.75; margin-left: auto; letter-spacing: 0.02em; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
 
 /* ── Navigation ── */
 .nav {

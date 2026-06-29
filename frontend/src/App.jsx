@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Predictor from './pages/Predictor.jsx'
 import Leaderboard from './pages/Leaderboard.jsx'
 import Charts from './pages/Charts.jsx'
 import Science from './pages/Science.jsx'
 import About from './pages/About.jsx'
 import Architecture from './pages/Architecture.jsx'
+
+const DC_IMAGES = ['/images/w_dc_neutral.jpg', '/images/w_dc_rain.jpg']
 
 const TABS = [
   { id: 'predictor',    label: 'Predictor' },
@@ -17,12 +19,16 @@ const TABS = [
 
 export default function App() {
   const [tab, setTab] = useState('predictor')
+  const headerImg = useMemo(() => DC_IMAGES[Math.floor(Math.random() * DC_IMAGES.length)], [])
 
   return (
     <div>
-      <header className="header">
-        <span className="header-icon">&#x1F6B2;</span>
-        <h1>Washington D.C. — Bike Rental Demand</h1>
+      <header className="header" style={{ backgroundImage: `url(${headerImg})` }}>
+        <div className="header-overlay" />
+        <div className="header-content">
+          <span className="header-icon">&#x1F6B2;</span>
+          <h1>Washington D.C. — Bike Rental Demand</h1>
+        </div>
         <span className="header-sub">Capital Bikeshare · 2011–2012 · XGBoost</span>
       </header>
 
