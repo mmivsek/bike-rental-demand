@@ -170,15 +170,20 @@ function DayChartTooltip({ active, payload, label }) {
   )
 }
 
-// ── Day forecast chart ────────────────────────────────────────────────────────
-function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr }) {
-  const [dayData, setDayData]   = useState(null)
-  const [baseline, setBaseline] = useState(null)
-  const [loading, setLoading]   = useState(false)
-  const [err, setErr]           = useState(null)
-  const timerRef                = useRef(null)
+// ── Scenario colors ───────────────────────────────────────────────────────────
+const SCENARIO_COLORS = ['#c0392b', '#2980b9', '#27ae60']
+const SCENARIO_LABELS = ['Scenario A', 'Scenario B', 'Scenario C']
 
-  // Load baseline once
+// ── Day forecast chart ────────────────────────────────────────────────────────
+function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr, comparisons = [] }) {
+  const [dayData, setDayData]     = useState(null)
+  const [baseline, setBaseline]   = useState(null)
+  const [loading, setLoading]     = useState(false)
+  const [err, setErr]             = useState(null)
+  const [compResults, setCompResults] = useState({})
+  const timerRef     = useRef(null)
+  const compTimerRef = useRef(null)
+
   useEffect(() => {
     fetch('/chart-data.json')
       .then(r => r.json())
@@ -186,43 +191,62 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
       .catch(() => {})
   }, [])
 
-  // Debounced day forecast fetch
+  // Primary forecast
   useEffect(() => {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
-      setLoading(true)
-      setErr(null)
+      setLoading(true); setErr(null)
       try {
         const result = await predictDay({
-          year:  selectedDate.getFullYear(),
-          month: selectedDate.getMonth() + 1,
-          day:   selectedDate.getDate(),
-          hr: 12,               // hr is irrelevant for day forecast; API ignores per-hour override
-          weathersit,
-          temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
+          year: selectedDate.getFullYear(), month: selectedDate.getMonth() + 1,
+          day: selectedDate.getDate(), hr: 12,
+          weathersit, temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
         })
         setDayData(result)
-      } catch (e) {
-        setErr(e.message)
-      } finally {
-        setLoading(false)
-      }
+      } catch (e) { setErr(e.message) }
+      finally { setLoading(false) }
     }, 600)
     return () => clearTimeout(timerRef.current)
   }, [selectedDate, weathersit, tempC, humPct, windKmh])
 
-  // Merge day forecast with baseline
-  const chartData = baseline?.map(b => {
-    const row = { hr: b.hr, avg: dayData?.is_workday ? b.workday : b.weekend }
-    if (dayData) {
-      const h = dayData.hours.find(x => x.hr === b.hr)
-      if (h) row.forecast = h.rental_count
-    }
-    return row
-  })
+  // Comparison forecasts
+  useEffect(() => {
+    clearTimeout(compTimerRef.current)
+    compTimerRef.current = setTimeout(async () => {
+      if (!comparisons.length) { setCompResults({}); return }
+      const results = {}
+      await Promise.all(comparisons.map(async c => {
+        try {
+          results[c.id] = await predictDay({
+            year: selectedDate.getFullYear(), month: selectedDate.getMonth() + 1,
+            day: selectedDate.getDate(), hr: 12,
+            weathersit: c.weathersit, temp_c: c.tempC, hum_pct: c.humPct, wind_kmh: c.windKmh,
+          })
+        } catch {}
+      }))
+      setCompResults(results)
+    }, 600)
+    return () => clearTimeout(compTimerRef.current)
+  }, [selectedDate, comparisons])
 
   const isWorkday = dayData ? dayData.is_workday : selectedDate.getDay() !== 0 && selectedDate.getDay() !== 6
   const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
+  const chartData = baseline?.map(b => {
+    const row = { hr: b.hr, avg: isWorkday ? b.workday : b.weekend }
+    if (dayData) {
+      const h = dayData.hours.find(x => x.hr === b.hr)
+      if (h) row.s0 = h.rental_count
+    }
+    comparisons.forEach(c => {
+      const cr = compResults[c.id]
+      if (cr) {
+        const h = cr.hours.find(x => x.hr === b.hr)
+        if (h) row[`s${c.id}`] = h.rental_count
+      }
+    })
+    return row
+  })
 
   return (
     <div className="card day-chart-card">
@@ -233,7 +257,7 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
         {loading && <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Fetching…</span>}
       </div>
       <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: 12, marginTop: 2 }}>
-        Red = model prediction with selected weather · Gray dashed = historical average for a {isWorkday ? 'working day' : 'weekend day'}
+        Dashed gray = historical average ({isWorkday ? 'working day' : 'weekend'}) · colored lines = model predictions
       </p>
 
       {err && (
@@ -248,47 +272,58 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="hr"
-              tickFormatter={v => `${v}:00`}
-              interval={2}
-              tick={{ fontSize: 11 }}
-            />
+            <XAxis dataKey="hr" tickFormatter={v => `${v}:00`} interval={2} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} unit=" bikes" width={68} />
             <Tooltip content={<DayChartTooltip />} />
             <Legend />
-            {/* vertical line at current selected hour */}
             <ReferenceLine
-              x={currentHr}
-              stroke="#c0392b"
-              strokeDasharray="4 2"
-              strokeWidth={1.5}
-              label={{ value: `${currentHr}:00`, position: 'top', style: { fontSize: 10, fill: '#c0392b' } }}
+              x={currentHr} stroke="#555" strokeDasharray="4 2" strokeWidth={1.5}
+              label={{ value: `${currentHr}:00`, position: 'top', style: { fontSize: 10, fill: '#555' } }}
             />
-            <Line
-              type="monotone"
-              dataKey="avg"
+            <Line type="monotone" dataKey="avg"
               name={isWorkday ? 'Avg working day' : 'Avg weekend'}
-              stroke="#aaa"
-              strokeDasharray="5 3"
-              strokeWidth={1.8}
-              dot={false}
-              isAnimationActive={false}
-            />
+              stroke="#aaa" strokeDasharray="5 3" strokeWidth={1.8} dot={false} isAnimationActive={false} />
             {dayData && (
-              <Line
-                type="monotone"
-                dataKey="forecast"
-                name="Forecast (these conditions)"
-                stroke="#c0392b"
-                strokeWidth={2.5}
-                dot={false}
-                isAnimationActive={false}
-              />
+              <Line type="monotone" dataKey="s0"
+                name={SCENARIO_LABELS[0]}
+                stroke={SCENARIO_COLORS[0]} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+            )}
+            {comparisons.map((c, i) =>
+              compResults[c.id] ? (
+                <Line key={c.id} type="monotone" dataKey={`s${c.id}`}
+                  name={SCENARIO_LABELS[i + 1]}
+                  stroke={SCENARIO_COLORS[i + 1]} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+              ) : null
             )}
           </LineChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  )
+}
+
+// ── Comparison scenario card ───────────────────────────────────────────────────
+function ScenarioCard({ scenario, index, onUpdate, onRemove }) {
+  const color = SCENARIO_COLORS[index + 1]
+  const label = SCENARIO_LABELS[index + 1]
+  return (
+    <div className="scenario-card" style={{ borderTopColor: color }}>
+      <div className="scenario-card-head">
+        <span className="scenario-dot" style={{ background: color }} />
+        <span className="scenario-card-label">{label}</span>
+        <button className="scenario-remove" onClick={onRemove} title="Remove">✕</button>
+      </div>
+      <div className="form-group" style={{ marginBottom: 8 }}>
+        <label className="form-label">Weather</label>
+        <select value={scenario.weathersit} onChange={e => onUpdate('weathersit', Number(e.target.value))}>
+          <option value={1}>☀️  Clear / few clouds</option>
+          <option value={2}>🌥️  Mist / Cloudy</option>
+          <option value={3}>🌧️  Light Rain or Snow</option>
+        </select>
+      </div>
+      <Slider label="Temperature" value={scenario.tempC}   onChange={v => onUpdate('tempC', v)}   min={-5}  max={40}  unit=" °C"   />
+      <Slider label="Humidity"    value={scenario.humPct}  onChange={v => onUpdate('humPct', v)}  min={0}   max={100} unit=" %"    />
+      <Slider label="Wind speed"  value={scenario.windKmh} onChange={v => onUpdate('windKmh', v)} min={0}   max={80}  unit=" km/h" />
     </div>
   )
 }
@@ -368,6 +403,17 @@ export default function Predictor() {
   const [tempC, setTempC]               = useState(20)
   const [humPct, setHumPct]             = useState(60)
   const [windKmh, setWindKmh]           = useState(15)
+
+  const [comparisons, setComparisons] = useState([])
+
+  function addComparison() {
+    if (comparisons.length >= 2) return
+    setComparisons(prev => [...prev, { id: Date.now(), weathersit, tempC, humPct, windKmh }])
+  }
+  function removeComparison(id) { setComparisons(prev => prev.filter(c => c.id !== id)) }
+  function updateComparison(id, field, value) {
+    setComparisons(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c))
+  }
 
   const [prediction, setPrediction]         = useState(null)
   const [predictionStale, setPredictionStale] = useState(false)
@@ -461,7 +507,34 @@ export default function Predictor() {
         humPct={humPct}
         windKmh={windKmh}
         currentHr={hr}
+        comparisons={comparisons}
       />
+
+      {/* Comparison scenario cards */}
+      {(comparisons.length > 0 || true) && (
+        <div className="scenario-row">
+          <div className="scenario-main-tag" style={{ borderTopColor: SCENARIO_COLORS[0] }}>
+            <span className="scenario-dot" style={{ background: SCENARIO_COLORS[0] }} />
+            <span className="scenario-card-label">{SCENARIO_LABELS[0]} — current inputs</span>
+          </div>
+
+          {comparisons.map((c, i) => (
+            <ScenarioCard
+              key={c.id}
+              scenario={c}
+              index={i}
+              onUpdate={(field, val) => updateComparison(c.id, field, val)}
+              onRemove={() => removeComparison(c.id)}
+            />
+          ))}
+
+          {comparisons.length < 2 && (
+            <button className="btn-add-scenario" onClick={addComparison}>
+              + Add comparison
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="predictor-grid">
         {/* ── Left: inputs ── */}
