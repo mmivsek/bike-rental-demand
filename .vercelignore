@@ -1,0 +1,8 @@
+api/
+models/
+dataset/
+*.pkl
+*.py
+*.qmd
+*.png
+*.jpg
