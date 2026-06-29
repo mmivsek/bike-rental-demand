@@ -1,89 +1,178 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import { predict } from '../lib/api.js'
-import { fetchDCWeather } from '../lib/weather.js'
+import { fetchDCWeather, getDateType, fetchWeatherForDateTime } from '../lib/weather.js'
 import { SEASON_NAMES, WEATHER_NAMES, WEEKDAY_NAMES } from '../lib/constants.js'
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
+// ── Date helpers ─────────────────────────────────────────────────────────────
+function dateToStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
-function currentHour() {
-  return new Date().getHours()
+function strToDate(s) {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+function currentHour() { return new Date().getHours() }
+
+function monthToSeason(month) {
+  return { 3:1, 4:1, 5:1, 6:2, 7:2, 8:2, 9:3, 10:3, 11:3, 12:4, 1:4, 2:4 }[month]
 }
 
+function formatDateDisplay(d) {
+  const day = WEEKDAY_NAMES[(d.getDay() + 6) % 7]
+  return d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) + ` (${day})`
+}
+
+// ── Calendar day class ────────────────────────────────────────────────────────
+function getDayClass(date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const fEnd = new Date(today)
+  fEnd.setDate(today.getDate() + 16)
+  if (d < today)  return 'cal-past'
+  if (d > fEnd)   return 'cal-no-data'
+  return 'cal-forecast'
+}
+
+// ── Slider ────────────────────────────────────────────────────────────────────
 function Slider({ label, value, onChange, min, max, unit, step = 1 }) {
   return (
     <div className="form-group">
       <label className="form-label">{label}</label>
       <div className="slider-row">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={e => onChange(Number(e.target.value))}
-        />
+        <input type="range" min={min} max={max} step={step} value={value}
+          onChange={e => onChange(Number(e.target.value))} />
         <span className="slider-val">{value}{unit}</span>
       </div>
     </div>
   )
 }
 
-function monthToSeason(month) {
-  const map = { 3:1, 4:1, 5:1, 6:2, 7:2, 8:2, 9:3, 10:3, 11:3, 12:4, 1:4, 2:4 }
-  return map[month]
+// ── Weather info panel ────────────────────────────────────────────────────────
+const WIP_META = {
+  historical: { label: 'Historical record',      icon: '📜', color: '#27ae60', bg: '#eafaf1', border: '#27ae60', desc: 'Actual observed conditions' },
+  current:    { label: 'Current conditions',     icon: '📍', color: '#2980b9', bg: '#e8f4fd', border: '#2980b9', desc: 'Live weather for Washington D.C.' },
+  forecast:   { label: '16-day forecast',        icon: '🔭', color: '#8e44ad', bg: '#f4ecf7', border: '#8e44ad', desc: 'Model-based prediction' },
+  'no-data':  { label: 'Beyond forecast window', icon: '❔', color: '#aaa',    bg: '#f8f9fa', border: '#ddd',    desc: 'No data available for this date' },
+}
+const WX_ICON = { 1: '☀️', 2: '🌥️', 3: '🌧️' }
+
+function WeatherInfoPanel({ dateStr, hr, onApply }) {
+  const [info, setInfo]       = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr]         = useState(null)
+
+  const dateType = getDateType(dateStr)
+  const meta     = WIP_META[dateType]
+
+  useEffect(() => {
+    setInfo(null)
+    setErr(null)
+    if (dateType === 'no-data') return
+
+    setLoading(true)
+    const t = setTimeout(async () => {
+      try {
+        const w = await fetchWeatherForDateTime(dateStr, hr)
+        setInfo(w)
+      } catch (e) {
+        setErr(e.message)
+      } finally {
+        setLoading(false)
+      }
+    }, 350)
+    return () => clearTimeout(t)
+  }, [dateStr, hr, dateType])
+
+  return (
+    <div className="wip" style={{ borderLeftColor: meta.border, background: meta.bg }}>
+      <div className="wip-head">
+        <span className="wip-icon">{meta.icon}</span>
+        <div style={{ flex: 1 }}>
+          <div className="wip-type" style={{ color: meta.color }}>{meta.label}</div>
+          <div className="wip-desc">{meta.desc}</div>
+        </div>
+        {loading && <span className="wip-spin">⟳</span>}
+      </div>
+
+      {dateType === 'no-data' && (
+        <p className="wip-note">
+          Open-Meteo provides forecasts up to 16 days ahead.
+          Select a date within the highlighted range to see weather data.
+        </p>
+      )}
+      {err && !loading && (
+        <p className="wip-note" style={{ color: '#c0392b' }}>{err}</p>
+      )}
+      {info && !loading && (
+        <>
+          <div className="wip-grid">
+            <div className="wip-cell">{WX_ICON[info.weathersit]} <span>{WEATHER_NAMES[info.weathersit]}</span></div>
+            <div className="wip-cell">🌡️ <span><b>{info.tempC}</b> °C</span></div>
+            <div className="wip-cell">💧 <span><b>{info.humPct}</b> %</span></div>
+            <div className="wip-cell">🌬️ <span><b>{info.windKmh}</b> km/h</span></div>
+          </div>
+          <button className="btn-apply" onClick={() => onApply(info)}>
+            ↓ Apply to predictor
+          </button>
+        </>
+      )}
+    </div>
+  )
 }
 
-function formatDateDisplay(dateStr) {
-  const d = new Date(dateStr + 'T12:00:00')
-  const day = WEEKDAY_NAMES[(d.getDay() + 6) % 7]
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + ` (${day})`
-}
-
-function ContextTable({ inputs, result }) {
-  const [y, m, d] = inputs.date.split('-').map(Number)
-  const season = monthToSeason(m)
-  const weekday = result.weekday ?? (new Date(inputs.date + 'T12:00:00').getDay() + 6) % 7
-
+// ── Context table ─────────────────────────────────────────────────────────────
+function ContextTable({ selectedDate, hr, weathersit, tempC, humPct, windKmh, result }) {
+  const season = monthToSeason(selectedDate.getMonth() + 1)
   return (
     <table className="ctx-table">
       <tbody>
-        <tr><td>Date</td><td>{formatDateDisplay(inputs.date)}</td></tr>
-        <tr><td>Hour</td><td>{String(inputs.hr).padStart(2, '0')}:00{result.is_rush ? ' — Rush hour' : ''}{result.is_workday === false ? ' — Off day' : ''}</td></tr>
+        <tr><td>Date</td><td>{formatDateDisplay(selectedDate)}</td></tr>
+        <tr><td>Hour</td><td>{String(hr).padStart(2,'0')}:00{result.is_rush ? ' — Rush hour' : ''}</td></tr>
         <tr><td>Day type</td><td>{result.is_workday ? 'Working day' : 'Weekend / Holiday'}</td></tr>
         <tr><td>Season</td><td>{SEASON_NAMES[season]}</td></tr>
-        <tr><td>Weather</td><td>{WEATHER_NAMES[inputs.weathersit]}</td></tr>
-        <tr><td>Temperature</td><td>{inputs.tempC} °C</td></tr>
-        <tr><td>Humidity</td><td>{inputs.humPct} %</td></tr>
-        <tr><td>Wind</td><td>{inputs.windKmh} km/h</td></tr>
+        <tr><td>Weather</td><td>{WEATHER_NAMES[weathersit]}</td></tr>
+        <tr><td>Temperature</td><td>{tempC} °C</td></tr>
+        <tr><td>Humidity</td><td>{humPct} %</td></tr>
+        <tr><td>Wind</td><td>{windKmh} km/h</td></tr>
       </tbody>
     </table>
   )
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function Predictor() {
-  const [date, setDate]           = useState(todayStr)
-  const [hr, setHr]               = useState(currentHour)
-  const [weathersit, setWeathersit] = useState(1)
-  const [tempC, setTempC]         = useState(20)
-  const [humPct, setHumPct]       = useState(60)
-  const [windKmh, setWindKmh]     = useState(15)
+  const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const [hr, setHr]                     = useState(currentHour)
+  const [weathersit, setWeathersit]     = useState(1)
+  const [tempC, setTempC]               = useState(20)
+  const [humPct, setHumPct]             = useState(60)
+  const [windKmh, setWindKmh]           = useState(15)
 
-  const [prediction, setPrediction] = useState(null)
-  const [loading, setLoading]       = useState(false)
+  const [prediction, setPrediction]         = useState(null)
+  const [loading, setLoading]               = useState(false)
   const [weatherLoading, setWeatherLoading] = useState(false)
   const [weatherStatus, setWeatherStatus]   = useState(null)
-  const [error, setError]           = useState(null)
+  const [error, setError]                   = useState(null)
 
-  const currentInputs = { date, hr, weathersit, tempC, humPct, windKmh }
+  const dateStr = dateToStr(selectedDate)
+
+  function applyWeatherData(info) {
+    setTempC(info.tempC)
+    setHumPct(info.humPct)
+    setWindKmh(info.windKmh)
+    setWeathersit(info.weathersit)
+  }
 
   async function handleFetchWeather() {
     setWeatherLoading(true)
     setError(null)
     try {
       const w = await fetchDCWeather()
-      // Set state for the form
-      setDate(w.date)
+      setSelectedDate(strToDate(w.date))
       setHr(w.hr)
       setTempC(w.tempC)
       setHumPct(w.humPct)
@@ -91,7 +180,6 @@ export default function Predictor() {
       setWeathersit(w.weathersit)
       setWeatherStatus(`Live D.C. weather as of ${w.time} (Eastern Time)`)
 
-      // Predict immediately with the fetched values
       const [y, mo, d] = w.date.split('-').map(Number)
       const result = await predict({
         year: y, month: mo, day: d, hr: w.hr,
@@ -110,10 +198,12 @@ export default function Predictor() {
     setLoading(true)
     setError(null)
     try {
-      const [y, mo, d] = date.split('-').map(Number)
       const result = await predict({
-        year: y, month: mo, day: d, hr,
-        weathersit, temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
+        year:  selectedDate.getFullYear(),
+        month: selectedDate.getMonth() + 1,
+        day:   selectedDate.getDate(),
+        hr, weathersit,
+        temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
       })
       setPrediction(result)
     } catch (e) {
@@ -124,25 +214,18 @@ export default function Predictor() {
   }
 
   const isHigh = prediction?.demand_class === 1
-  const prob = prediction ? Math.round(prediction.demand_prob * 100) : 0
+  const prob   = prediction ? Math.round(prediction.demand_prob * 100) : 0
 
   return (
     <div>
-      {/* Weather button bar */}
+      {/* Weather bar */}
       <div className="weather-bar">
-        <button
-          className="btn btn-weather"
-          onClick={handleFetchWeather}
-          disabled={weatherLoading}
-        >
+        <button className="btn btn-weather" onClick={handleFetchWeather} disabled={weatherLoading}>
           {weatherLoading ? '...' : '🌤'} Get real-time D.C. weather
         </button>
-        {weatherStatus && (
-          <span className="weather-status">{weatherStatus}</span>
-        )}
-        {!weatherStatus && (
-          <span className="weather-status">Fetches live conditions from Open-Meteo (no API key needed)</span>
-        )}
+        <span className="weather-status">
+          {weatherStatus ?? 'Fetches live conditions from Open-Meteo (no API key needed)'}
+        </span>
       </div>
 
       <div className="predictor-grid">
@@ -150,12 +233,31 @@ export default function Predictor() {
         <div className="card">
           <div className="card-title">Input parameters</div>
 
+          {/* Date picker */}
           <div className="form-group">
             <label className="form-label">Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DatePicker
+              selected={selectedDate}
+              onChange={d => d && setSelectedDate(d)}
+              dateFormat="yyyy-MM-dd"
+              dayClassName={getDayClass}
+              wrapperClassName="dp-wrapper"
+              className="dp-input"
+              todayButton="Today"
+            />
+            <div className="cal-legend">
+              <span className="cl-dot cl-past"></span> Historical &nbsp;
+              <span className="cl-dot cl-forecast"></span> Forecast (≤ 16 days) &nbsp;
+              <span className="cl-dot cl-no-data"></span> No data yet
+            </div>
           </div>
 
           <Slider label="Hour of day" value={hr} onChange={setHr} min={0} max={23} unit=":00" />
+
+          {/* Weather info panel — auto-fetches for selected date + hour */}
+          <WeatherInfoPanel dateStr={dateStr} hr={hr} onApply={applyWeatherData} />
+
+          <div className="override-label">Manual override</div>
 
           <div className="form-group">
             <label className="form-label">Weather condition</label>
@@ -166,9 +268,9 @@ export default function Predictor() {
             </select>
           </div>
 
-          <Slider label="Temperature" value={tempC} onChange={setTempC} min={-5} max={40} unit=" °C" />
-          <Slider label="Humidity" value={humPct} onChange={setHumPct} min={0} max={100} unit=" %" />
-          <Slider label="Wind speed" value={windKmh} onChange={setWindKmh} min={0} max={80} unit=" km/h" />
+          <Slider label="Temperature" value={tempC}   onChange={setTempC}   min={-5}  max={40}  unit=" °C"   />
+          <Slider label="Humidity"    value={humPct}  onChange={setHumPct}  min={0}   max={100} unit=" %"    />
+          <Slider label="Wind speed"  value={windKmh} onChange={setWindKmh} min={0}   max={80}  unit=" km/h" />
 
           <div className="btn-predict-wrap">
             <button className="btn btn-primary" onClick={handlePredict} disabled={loading}>
@@ -190,12 +292,8 @@ export default function Predictor() {
           {prediction ? (
             <>
               <div className={isHigh ? 'result-high' : 'result-low'}>
-                <div className="result-label">
-                  {isHigh ? '↑ HIGH demand' : '↓ LOW demand'}
-                </div>
-                <div className="result-sub">
-                  Confidence: {prob}% probability of high demand
-                </div>
+                <div className="result-label">{isHigh ? '↑ HIGH demand' : '↓ LOW demand'}</div>
+                <div className="result-sub">Confidence: {prob}% probability of high demand</div>
                 <div className="prob-bar-wrap">
                   <div className="prob-bar-track">
                     <div className="prob-bar-fill" style={{ width: `${prob}%` }} />
@@ -210,10 +308,14 @@ export default function Predictor() {
                   <span className="count">{prediction.rental_count}</span>
                   <span className="unit">bikes / hour  <span style={{color:'#aaa'}}>± 23 MAE</span></span>
                 </div>
-
                 <hr className="div" />
                 <div className="card-title">Prediction context</div>
-                <ContextTable inputs={currentInputs} result={prediction} />
+                <ContextTable
+                  selectedDate={selectedDate}
+                  hr={hr} weathersit={weathersit}
+                  tempC={tempC} humPct={humPct} windKmh={windKmh}
+                  result={prediction}
+                />
               </div>
 
               <div className="alert-info">
@@ -224,7 +326,8 @@ export default function Predictor() {
           ) : (
             <div className="card placeholder">
               <div className="placeholder-icon">&#x1F4CA;</div>
-              <p>Set your inputs and click <strong>Predict demand</strong>,<br />or use the weather button to auto-fill current D.C. conditions.</p>
+              <p>Set your inputs and click <strong>Predict demand</strong>,<br />
+                 or use the weather button to auto-fill current D.C. conditions.</p>
             </div>
           )}
         </div>

@@ -331,6 +331,119 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
   margin-top: 12px;
 }
 
+/* ── react-datepicker input ── */
+.dp-wrapper { width: 100%; }
+.dp-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.92rem;
+  background: white;
+  color: var(--text);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.dp-input:focus { outline: none; border-color: var(--red); }
+
+/* react-datepicker chrome */
+.react-datepicker { font-family: inherit; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.react-datepicker__header { background: var(--dark); border-bottom: none; padding-top: 12px; }
+.react-datepicker__current-month { color: #fff; font-size: 0.88rem; font-weight: 700; }
+.react-datepicker__day-name { color: rgba(255,255,255,0.7); font-size: 0.75rem; }
+.react-datepicker__navigation-icon::before { border-color: #fff; }
+.react-datepicker__navigation:hover *::before { border-color: #ddd; }
+.react-datepicker__today-button { background: var(--red); color: #fff; border-top: none; border-radius: 0 0 6px 6px; font-size: 0.82rem; padding: 6px; }
+.react-datepicker__day--selected,
+.react-datepicker__day--selected:hover { background: var(--red) !important; color: #fff !important; border-radius: 4px !important; }
+.react-datepicker__day--keyboard-selected { background: rgba(192,57,43,0.2) !important; }
+.react-datepicker__day--today { font-weight: 800; border: 2px solid var(--red) !important; border-radius: 4px; }
+
+/* Calendar day type classes */
+.react-datepicker__day.cal-past { background: #d4edda; color: #155724; border-radius: 4px; }
+.react-datepicker__day.cal-past:hover { background: #b8dacc !important; }
+.react-datepicker__day.cal-forecast { background: #d4e6f7; color: #1a4a72; border-radius: 4px; }
+.react-datepicker__day.cal-forecast:hover { background: #b8d0ef !important; }
+.react-datepicker__day.cal-no-data { color: #ccc; }
+.react-datepicker__day.cal-no-data:hover { background: #f0f0f0 !important; color: #aaa !important; }
+
+/* Calendar legend */
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.cl-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.cl-past     { background: #d4edda; border: 1px solid #27ae60; }
+.cl-forecast { background: #d4e6f7; border: 1px solid #2980b9; }
+.cl-no-data  { background: #f0f0f0; border: 1px solid #ccc; }
+
+/* Weather info panel */
+.wip {
+  border-left: 4px solid #ccc;
+  border-radius: 0 6px 6px 0;
+  padding: 12px 14px;
+  margin: 10px 0 4px;
+}
+.wip-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.wip-icon { font-size: 1.15rem; flex-shrink: 0; margin-top: 1px; }
+.wip-type { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.wip-desc { font-size: 0.73rem; color: var(--text-muted); margin-top: 2px; }
+.wip-spin { margin-left: auto; font-size: 1rem; color: var(--text-muted); display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.wip-note { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px; line-height: 1.5; }
+.wip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 6px 0 10px;
+}
+.wip-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.86rem;
+}
+.btn-apply {
+  background: var(--dark);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.btn-apply:hover { background: #1a252f; }
+
+/* "Manual override" divider label */
+.override-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin: 14px 0 8px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .predictor-grid { grid-template-columns: 1fr; }
