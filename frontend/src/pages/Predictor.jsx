@@ -42,14 +42,14 @@ function getDayClass(date) {
 }
 
 // ── Slider ────────────────────────────────────────────────────────────────────
-function Slider({ label, value, onChange, min, max, unit, step = 1 }) {
+function Slider({ label, value, onChange, min, max, unit, step = 1, compact = false }) {
   return (
-    <div className="form-group">
-      <label className="form-label">{label}</label>
+    <div className="form-group" style={compact ? { marginBottom: 4 } : undefined}>
+      <label className="form-label" style={compact ? { fontSize: '0.72rem' } : undefined}>{label}</label>
       <div className="slider-row">
         <input type="range" min={min} max={max} step={step} value={value}
           onChange={e => onChange(Number(e.target.value))} />
-        <span className="slider-val">{value}{unit}</span>
+        <span className="slider-val" style={compact ? { fontSize: '0.78rem', minWidth: 38 } : undefined}>{value}{unit}</span>
       </div>
     </div>
   )
@@ -240,9 +240,10 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
       const results = {}
       await Promise.all(comparisons.map(async c => {
         try {
+          const cDate = c.selectedDate instanceof Date ? c.selectedDate : selectedDate
           results[c.id] = await predictDay({
-            year: selectedDate.getFullYear(), month: selectedDate.getMonth() + 1,
-            day: selectedDate.getDate(), hr: 12,
+            year: cDate.getFullYear(), month: cDate.getMonth() + 1,
+            day: cDate.getDate(), hr: 12,
             weathersit: c.weathersit, temp_c: c.tempC, hum_pct: c.humPct, wind_kmh: c.windKmh,
           })
         } catch {}
@@ -329,6 +330,7 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
 function ScenarioCard({ scenario, index, onUpdate, onRemove }) {
   const color = SCENARIO_COLORS[index + 1]
   const label = SCENARIO_LABELS[index + 1]
+  const date  = scenario.selectedDate instanceof Date ? scenario.selectedDate : new Date(scenario.selectedDate)
   return (
     <div className="scenario-card" style={{ borderTopColor: color }}>
       <div className="scenario-card-head">
@@ -336,17 +338,34 @@ function ScenarioCard({ scenario, index, onUpdate, onRemove }) {
         <span className="scenario-card-label">{label}</span>
         <button className="scenario-remove" onClick={onRemove} title="Remove">✕</button>
       </div>
-      <div className="form-group" style={{ marginBottom: 8 }}>
-        <label className="form-label">Weather</label>
+
+      {/* Date + hour */}
+      <div className="form-group" style={{ marginBottom: 6 }}>
+        <label className="form-label" style={{ fontSize: '0.72rem' }}>Date</label>
+        <DatePicker
+          selected={date}
+          onChange={d => d && onUpdate('selectedDate', d)}
+          dateFormat="yyyy-MM-dd"
+          dayClassName={getDayClass}
+          wrapperClassName="dp-wrapper"
+          className="dp-input dp-input-sm"
+        />
+      </div>
+      <Slider label="Hour" value={scenario.hr ?? 12} onChange={v => onUpdate('hr', v)} min={0} max={23} unit=":00" compact />
+
+      <div style={{ borderTop: '1px solid #eee', margin: '8px 0 6px' }} />
+
+      <div className="form-group" style={{ marginBottom: 6 }}>
+        <label className="form-label" style={{ fontSize: '0.72rem' }}>Weather</label>
         <select value={scenario.weathersit} onChange={e => onUpdate('weathersit', Number(e.target.value))}>
           <option value={1}>☀️  Clear / few clouds</option>
           <option value={2}>🌥️  Mist / Cloudy</option>
           <option value={3}>🌧️  Light Rain or Snow</option>
         </select>
       </div>
-      <Slider label="Temperature" value={scenario.tempC}   onChange={v => onUpdate('tempC', v)}   min={-5}  max={40}  unit=" °C"   />
-      <Slider label="Humidity"    value={scenario.humPct}  onChange={v => onUpdate('humPct', v)}  min={0}   max={100} unit=" %"    />
-      <Slider label="Wind speed"  value={scenario.windKmh} onChange={v => onUpdate('windKmh', v)} min={0}   max={80}  unit=" km/h" />
+      <Slider label="Temperature" value={scenario.tempC}   onChange={v => onUpdate('tempC', v)}   min={-5}  max={40}  unit=" °C"   compact />
+      <Slider label="Humidity"    value={scenario.humPct}  onChange={v => onUpdate('humPct', v)}  min={0}   max={100} unit=" %"    compact />
+      <Slider label="Wind speed"  value={scenario.windKmh} onChange={v => onUpdate('windKmh', v)} min={0}   max={80}  unit=" km/h" compact />
     </div>
   )
 }
@@ -541,7 +560,7 @@ export default function Predictor() {
 
   function addComparison() {
     if (comparisons.length >= 2) return
-    setComparisons(prev => [...prev, { id: Date.now(), weathersit, tempC, humPct, windKmh }])
+    setComparisons(prev => [...prev, { id: Date.now(), selectedDate: new Date(selectedDate), hr, weathersit, tempC, humPct, windKmh }])
   }
   function removeComparison(id) { setComparisons(prev => prev.filter(c => c.id !== id)) }
   function updateComparison(id, field, value) {

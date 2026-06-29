@@ -368,6 +368,7 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
   box-sizing: border-box;
 }
 .dp-input:focus { outline: none; border-color: var(--red); }
+.dp-input-sm { padding: 5px 8px; font-size: 0.8rem; }
 
 /* react-datepicker chrome */
 .react-datepicker { font-family: inherit; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
