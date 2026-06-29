@@ -174,6 +174,29 @@ function DayChartTooltip({ active, payload, label }) {
 const SCENARIO_COLORS = ['#c0392b', '#2980b9', '#27ae60']
 const SCENARIO_LABELS = ['Scenario A', 'Scenario B', 'Scenario C']
 
+// ── Selected-hour label above the reference line ──────────────────────────────
+function SelectedHourLabel({ viewBox, hr, date }) {
+  if (!viewBox) return null
+  const { x, y } = viewBox
+  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const hrStr  = `${String(hr).padStart(2, '0')}:00`
+  const W = 86, H = 34
+  return (
+    <g>
+      <rect x={x - W / 2} y={y - H - 6} width={W} height={H}
+        fill="white" rx={5} stroke="#ccc" strokeWidth={1}
+        style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.12))' }}
+      />
+      <text x={x} y={y - H + 12} textAnchor="middle" fontSize={9} fill="#888" fontFamily="inherit">
+        {dayStr}
+      </text>
+      <text x={x} y={y - H + 27} textAnchor="middle" fontSize={13} fontWeight="800" fill="#1e2530" fontFamily="inherit">
+        {hrStr}
+      </text>
+    </g>
+  )
+}
+
 // ── Day forecast chart ────────────────────────────────────────────────────────
 function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr, comparisons = [] }) {
   const [dayData, setDayData]     = useState(null)
@@ -269,16 +292,16 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
       )}
 
       <div className="chart-wrap">
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={chartData} margin={{ top: 46, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="hr" tickFormatter={v => `${v}:00`} interval={2} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} unit=" bikes" width={68} />
             <Tooltip content={<DayChartTooltip />} />
             <Legend />
             <ReferenceLine
-              x={currentHr} stroke="#555" strokeDasharray="4 2" strokeWidth={1.5}
-              label={{ value: `${currentHr}:00`, position: 'top', style: { fontSize: 10, fill: '#555' } }}
+              x={currentHr} stroke="#1e2530" strokeDasharray="5 3" strokeWidth={2}
+              label={<SelectedHourLabel hr={currentHr} date={selectedDate} />}
             />
             <Line type="monotone" dataKey="avg"
               name={isWorkday ? 'Avg working day' : 'Avg weekend'}
