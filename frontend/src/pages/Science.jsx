@@ -5,9 +5,9 @@ import {
   ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts'
 
-const RED  = '#c0392b'
-const BLUE = '#2980b9'
-const GREEN = '#27ae60'
+const RED    = '#c0392b'
+const BLUE   = '#2980b9'
+const GREEN  = '#27ae60'
 const PURPLE = '#8e44ad'
 const ORANGE = '#e67e22'
 
@@ -33,6 +33,26 @@ function MetricPill({ label, value, color }) {
       <div className="mp-label">{label}</div>
       <div className="mp-value" style={{ color }}>{value}</div>
     </div>
+  )
+}
+function CodeBlock({ children }) {
+  return (
+    <pre style={{
+      background: '#1e1e2e', color: '#cdd6f4', borderRadius: 8,
+      padding: '14px 18px', fontSize: '0.8rem', lineHeight: 1.7,
+      overflowX: 'auto', margin: '10px 0',
+    }}>
+      <code>{children}</code>
+    </pre>
+  )
+}
+function ApiRow({ method, what, usedOn }) {
+  return (
+    <tr>
+      <td><code style={{ color: BLUE, fontWeight: 700 }}>{method}</code></td>
+      <td style={{ fontSize: '0.85rem' }}>{what}</td>
+      <td style={{ fontSize: '0.83rem', color: '#888' }}>{usedOn}</td>
+    </tr>
   )
 }
 
@@ -92,7 +112,7 @@ export default function Science() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
-  const [impTab, setImpTab] = useState('reg') // 'clf' | 'reg'
+  const [impTab, setImpTab] = useState('reg')
 
   useEffect(() => {
     fetch('/science-data.json')
@@ -105,11 +125,215 @@ export default function Science() {
   if (err)     return <div className="error-box">{err}</div>
 
   const impData = impTab === 'clf' ? data.clf_importance_ranked : data.reg_importance_ranked
+  const nTrain  = data.metrics.clf.n_train
+  const nTest   = data.metrics.clf.n_test
 
   return (
     <div>
 
-      {/* ── 1. Pipeline overview ── */}
+      {/* ── 0. The two ML questions ── */}
+      <div className="card">
+        <SectionTitle>The two ML questions we're answering</SectionTitle>
+        <Note>
+          Before writing a single line of model code, we defined exactly what we want the model to predict.
+          This project uses two separate models because the questions are fundamentally different.
+        </Note>
+        <div className="grid-2" style={{ gap: 20 }}>
+          <div className="method-box" style={{ borderColor: RED }}>
+            <div className="method-title" style={{ color: RED }}>Question 1 — Classification</div>
+            <p style={{ fontSize: '0.9rem', fontStyle: 'italic', margin: '8px 0 12px', color: '#444' }}>
+              "Is this a high-demand hour?"
+            </p>
+            <p style={{ fontSize: '0.85rem', lineHeight: 1.7 }}>
+              The target variable <code>demand_high</code> is <b>0</b> (low) or <b>1</b> (high).
+              It is derived from the raw rental count: any hour with more than <b>142 bikes/hr</b> (the median)
+              is labelled high demand. This gives balanced classes — roughly 50% high, 50% low.
+            </p>
+            <Formula eq="demand_high = 1  if cnt > 142  else  0" desc="threshold = median of cnt" />
+            <div style={{ marginTop: 10, fontSize: '0.83rem', color: '#666' }}>
+              Algorithm: <b>XGBClassifier</b> · outputs 0 or 1, plus a probability via <code>.predict_proba()</code>
+            </div>
+          </div>
+          <div className="method-box" style={{ borderColor: ORANGE }}>
+            <div className="method-title" style={{ color: ORANGE }}>Question 2 — Regression</div>
+            <p style={{ fontSize: '0.9rem', fontStyle: 'italic', margin: '8px 0 12px', color: '#444' }}>
+              "How many bikes will be rented this hour?"
+            </p>
+            <p style={{ fontSize: '0.85rem', lineHeight: 1.7 }}>
+              The target variable <code>cnt</code> is the raw hourly rental count — a continuous number
+              ranging from 1 to 977. The model predicts the actual value, not a category.
+            </p>
+            <Formula eq="target = cnt  (bikes rented per hour)" desc="range: 1 – 977 in the dataset" />
+            <div style={{ marginTop: 10, fontSize: '0.83rem', color: '#666' }}>
+              Algorithm: <b>XGBRegressor</b> · outputs a continuous number via <code>.predict()</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 1. sklearn API ── */}
+      <div className="card">
+        <SectionTitle>The scikit-learn API — one pattern, every model</SectionTitle>
+        <Note>
+          Every model in scikit-learn (and XGBoost, which follows the same convention) exposes
+          the same handful of methods. Learn them once and you can use any algorithm.
+        </Note>
+        <div className="table-wrap" style={{ marginBottom: 16 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>What it does</th>
+                <th>Used on</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ApiRow method=".fit(X, y)"         what="Learns parameters from training data. This is the only step that touches the labels."  usedOn="every estimator" />
+              <ApiRow method=".predict(X)"         what="Produces the model's prediction for each row in X."                                     usedOn="models" />
+              <ApiRow method=".predict_proba(X)"   what="Returns class probabilities (e.g. 73% chance of high demand), not just the label."      usedOn="classifiers" />
+              <ApiRow method=".transform(X)"       what="Outputs transformed features — e.g. scaled numbers, encoded categories."                usedOn="preprocessors" />
+              <ApiRow method=".fit_transform(X)"   what="fit then transform in one call. Only safe to use on training data."                     usedOn="preprocessors" />
+            </tbody>
+          </table>
+        </div>
+        <p style={{ fontSize: '0.85rem', lineHeight: 1.7, marginBottom: 8 }}>
+          The key insight: <code>LinearRegression().fit(X, y)</code> has the exact same shape as
+          <code> XGBClassifier().fit(X, y)</code> — only the import line changes. This is why you
+          can swap algorithms without rewriting your pipeline.
+        </p>
+        <CodeBlock>{`from sklearn.linear_model import LinearRegression
+from xgboost import XGBClassifier
+
+# Both use the exact same .fit() / .predict() pattern
+reg = LinearRegression()
+reg.fit(X_train, y_train)        # learns from data
+predictions = reg.predict(X_test) # produces numbers
+
+clf = XGBClassifier()
+clf.fit(X_train, y_train)
+labels = clf.predict(X_test)          # 0 or 1
+probs  = clf.predict_proba(X_test)    # [[0.27, 0.73], ...]`}
+        </CodeBlock>
+      </div>
+
+      {/* ── 2. Train/test split ── */}
+      <div className="card">
+        <SectionTitle>Train / test split — the golden rule</SectionTitle>
+        <div className="alert-info" style={{ marginBottom: 16, fontWeight: 600 }}>
+          Mantra: the test set is touched exactly once, at the very end.
+          Any decision made using test rows corrupts your evaluation.
+        </div>
+        <p style={{ fontSize: '0.85rem', lineHeight: 1.7, marginBottom: 14 }}>
+          We fit on <b>training</b> data and judge on a held-out <b>test</b> set the model has never seen.
+          A model that memorises training rows but fails on new ones has <em>overfit</em> — it is useless in production.
+          The test set is our honest estimate of generalisation to the real world.
+        </p>
+        <div className="grid-2" style={{ gap: 20, marginBottom: 16 }}>
+          <div className="method-box" style={{ borderColor: BLUE }}>
+            <div className="method-title" style={{ color: BLUE }}>Our split: 85 % / 15 %</div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+              <MetricPill label="Training rows" value={nTrain.toLocaleString()} color={BLUE} />
+              <MetricPill label="Test rows"     value={nTest.toLocaleString()}  color={RED} />
+              <MetricPill label="Total dataset" value={(nTrain + nTest).toLocaleString()} color="#6c757d" />
+            </div>
+            <p style={{ fontSize: '0.83rem', marginTop: 12, lineHeight: 1.7 }}>
+              <b>test_size = 0.15</b> — 15 % of the 17,379 rows are set aside before any feature
+              selection, scaling, or model training. They are not touched again until the final
+              accuracy/R² numbers are computed.
+            </p>
+            <p style={{ fontSize: '0.83rem', marginTop: 8, lineHeight: 1.7 }}>
+              <b>random_state = 42</b> — the same 2,607 rows are held out every time the code runs,
+              making results fully reproducible.
+            </p>
+          </div>
+          <div className="method-box" style={{ borderColor: ORANGE }}>
+            <div className="method-title" style={{ color: ORANGE }}>Why not use all data for training?</div>
+            <p style={{ fontSize: '0.83rem', marginTop: 10, lineHeight: 1.7 }}>
+              If you train on all rows you have no way to measure how the model performs on
+              <em> unseen</em> data. You could report 99% accuracy simply because the model
+              memorised every row — that number means nothing for real-world predictions.
+            </p>
+            <p style={{ fontSize: '0.83rem', marginTop: 8, lineHeight: 1.7 }}>
+              The held-out test set acts as a simulation of real future data the model will
+              encounter in production.
+            </p>
+          </div>
+        </div>
+        <CodeBlock>{`from sklearn.model_selection import train_test_split
+
+# Split features and both targets at the same time
+X_train, X_test, y_clf_train, y_clf_test = train_test_split(
+    X, y_clf,
+    test_size=0.15,    # 15 % held out
+    random_state=42    # reproducible — same rows every run
+)
+
+# Same split for regression target (same random_state = same rows)
+_, _, y_reg_train, y_reg_test = train_test_split(
+    X, y_reg, test_size=0.15, random_state=42
+)
+
+print(f"Train: {len(X_train):,} rows | Test: {len(X_test):,} rows")
+# → Train: 14,772 rows | Test: 2,607 rows`}
+        </CodeBlock>
+      </div>
+
+      {/* ── 3. Dummy baseline ── */}
+      <div className="card">
+        <SectionTitle>Dummy baseline — what does "better than nothing" look like?</SectionTitle>
+        <Note>
+          Before comparing models, we need a floor. A dummy model ignores all features and
+          makes the simplest possible prediction. Any real model must beat this to be useful.
+        </Note>
+        <div className="grid-2" style={{ gap: 20, marginBottom: 16 }}>
+          <div className="method-box" style={{ borderColor: RED }}>
+            <div className="method-title" style={{ color: RED }}>DummyClassifier — always predicts the majority class</div>
+            <p style={{ fontSize: '0.83rem', lineHeight: 1.7, marginTop: 8 }}>
+              Because classes are balanced (≈50/50), it predicts roughly at random.
+              Accuracy near 50 % and AUC = 0.5 (coin flip) confirm there is <em>no</em> signal being used.
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+              <MetricPill label="Accuracy" value="49.1 %" color={RED} />
+              <MetricPill label="ROC-AUC"  value="0.500"  color="#6c757d" />
+            </div>
+            <p style={{ fontSize: '0.83rem', color: '#888', marginTop: 10 }}>
+              XGBoost achieves 95.1 % accuracy and AUC 0.989 — a massive improvement over the baseline.
+            </p>
+          </div>
+          <div className="method-box" style={{ borderColor: ORANGE }}>
+            <div className="method-title" style={{ color: ORANGE }}>DummyRegressor — always predicts the mean</div>
+            <p style={{ fontSize: '0.83rem', lineHeight: 1.7, marginTop: 8 }}>
+              It predicts the average rental count (≈189 bikes/hr) for every single hour.
+              R² near zero means it explains none of the variance. MAE of 140.5 means it is
+              on average 140 bikes wrong per hour.
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+              <MetricPill label="R²"  value="-0.001" color={RED} />
+              <MetricPill label="MAE" value="140.5 bikes/hr" color="#6c757d" />
+            </div>
+            <p style={{ fontSize: '0.83rem', color: '#888', marginTop: 10 }}>
+              XGBoost achieves R² = 0.955 and MAE = 22.8 — predicting within 23 bikes on average.
+            </p>
+          </div>
+        </div>
+        <CodeBlock>{`from sklearn.dummy import DummyClassifier, DummyRegressor
+from sklearn.metrics import accuracy_score, roc_auc_score, r2_score, mean_absolute_error
+
+# Classification dummy
+dummy_clf = DummyClassifier(strategy="most_frequent")
+dummy_clf.fit(X_train, y_clf_train)
+print(accuracy_score(y_clf_test, dummy_clf.predict(X_test)))   # → 0.491
+print(roc_auc_score(y_clf_test, dummy_clf.predict_proba(X_test)[:,1]))  # → 0.500
+
+# Regression dummy
+dummy_reg = DummyRegressor(strategy="mean")
+dummy_reg.fit(X_train, y_reg_train)
+print(r2_score(y_reg_test, dummy_reg.predict(X_test)))          # → -0.001
+print(mean_absolute_error(y_reg_test, dummy_reg.predict(X_test)))  # → 140.5`}
+        </CodeBlock>
+      </div>
+
+      {/* ── 4. Pipeline overview ── */}
       <div className="card">
         <SectionTitle>End-to-end ML pipeline</SectionTitle>
         <Note>
@@ -119,11 +343,11 @@ export default function Science() {
         </Note>
         <div className="pipeline">
           {[
-            { step: '1', label: 'Raw data', sub: 'hour.csv · 17 k rows', color: '#6c757d' },
-            { step: '2', label: 'Feature engineering', sub: '23 derived features', color: BLUE },
-            { step: '3', label: 'Feature selection', sub: 'Lasso + |r| ≥ 0.05', color: PURPLE },
-            { step: '4', label: 'XGBoost classifier', sub: 'demand_high (0/1)', color: RED },
-            { step: '4b', label: 'XGBoost regressor', sub: 'cnt (bikes/hr)', color: ORANGE },
+            { step: '1', label: 'Raw data',            sub: 'hour.csv · 17 k rows',      color: '#6c757d' },
+            { step: '2', label: 'Feature engineering', sub: '23 derived features',        color: BLUE },
+            { step: '3', label: 'Feature selection',   sub: 'Lasso + |r| ≥ 0.05',        color: PURPLE },
+            { step: '4', label: 'XGBoost classifier',  sub: 'demand_high (0/1)',          color: RED },
+            { step: '4b', label: 'XGBoost regressor',  sub: 'cnt (bikes/hr)',             color: ORANGE },
           ].map((s, i) => (
             <div key={i} className="pipe-step" style={{ borderColor: s.color }}>
               <div className="pipe-num" style={{ background: s.color }}>{s.step}</div>
@@ -132,9 +356,41 @@ export default function Science() {
             </div>
           ))}
         </div>
+        <p style={{ fontSize: '0.85rem', lineHeight: 1.7, marginTop: 16 }}>
+          Both models are wrapped in a <b>scikit-learn Pipeline</b> that first scales features
+          with <code>StandardScaler</code> and then runs the XGBoost model. Bundling preprocessing
+          and model into one object is the key to avoiding data leakage (see below).
+        </p>
+        <CodeBlock>{`from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier, XGBRegressor
+
+# Classifier pipeline: scale → XGBoost
+clf_pipeline = Pipeline([
+    ("sc",    StandardScaler()),
+    ("model", XGBClassifier(
+        n_estimators=200, max_depth=6,
+        learning_rate=0.1, subsample=0.8,
+        random_state=42, eval_metric="logloss",
+    )),
+])
+
+# Regressor pipeline: same structure, different model
+reg_pipeline = Pipeline([
+    ("sc",    StandardScaler()),
+    ("model", XGBRegressor(
+        n_estimators=400, max_depth=6,
+        learning_rate=0.05, subsample=0.8,
+        random_state=42,
+    )),
+])
+
+clf_pipeline.fit(X_final, y_clf)   # .fit() on ALL data for the saved model
+reg_pipeline.fit(X_final, y_reg)`}
+        </CodeBlock>
       </div>
 
-      {/* ── 2. Feature engineering ── */}
+      {/* ── 5. Feature engineering ── */}
       <div className="card">
         <SectionTitle>Feature engineering — 23 input features</SectionTitle>
         <Note>
@@ -142,7 +398,6 @@ export default function Science() {
           richer numeric signals before any model sees them.
         </Note>
 
-        {/* Formulas */}
         <div className="formula-block">
           <div className="formula-section-label">Normalisation</div>
           <Formula eq="temp  = temp_c / 41"              desc="°C → [0, 1], max observed = 41 °C" />
@@ -171,7 +426,6 @@ export default function Science() {
           <Formula eq="demand_high = 1  if cnt > 142  else  0" desc="median cnt = 142 bikes/hr — balanced classes" />
         </div>
 
-        {/* Feature table */}
         <div className="table-wrap" style={{ marginTop: 18 }}>
           <table>
             <thead>
@@ -208,7 +462,7 @@ export default function Science() {
         </div>
       </div>
 
-      {/* ── 3. Feature selection ── */}
+      {/* ── 6. Feature selection ── */}
       <div className="card">
         <SectionTitle>Feature selection — Lasso + correlation filter</SectionTitle>
         <Note>
@@ -235,13 +489,73 @@ export default function Science() {
             <Formula eq="r = Σ(xᵢ−x̄)(yᵢ−ȳ) / √[Σ(xᵢ−x̄)² Σ(yᵢ−ȳ)²]" />
           </div>
         </div>
+        <CodeBlock>{`from sklearn.linear_model import Lasso
+from sklearn.preprocessing import StandardScaler
+
+# Feature selection runs on TRAINING DATA ONLY — never touches the test set
+sc  = StandardScaler()
+las = Lasso(alpha=0.5, random_state=42, max_iter=5000)
+las.fit(sc.fit_transform(X_train), y_reg_train)
+
+# Keep features with non-zero Lasso coefficient
+kept_lasso = [f for f, c in zip(features, las.coef_) if c != 0]
+
+# Keep features with |Pearson r| ≥ 0.05 against the rental count
+corr = X_train.corrwith(y_reg_train)
+kept_corr = corr[corr.abs() >= 0.05].index.tolist()
+
+# Final set: union of both filters
+FINAL_FEATURES = sorted(set(kept_corr) | set(kept_lasso))
+# Result: all 23 features survived both filters`}
+        </CodeBlock>
         <div className="alert-info" style={{ marginTop: 14 }}>
           Result: all 23 engineered features survived both filters — none were zeroed or below
           the correlation threshold. The full set enters both the classifier and regressor.
         </div>
       </div>
 
-      {/* ── 4. Feature importance ── */}
+      {/* ── 7. Data leakage ── */}
+      <div className="card">
+        <SectionTitle>Data leakage — and how we prevented it</SectionTitle>
+        <Note>
+          Data leakage means information from outside the training fold sneaks into training,
+          making your test score look better than it really is. You ship a model that looked
+          excellent in testing and then disappoints on live data.
+        </Note>
+        <div className="grid-2" style={{ gap: 20, marginBottom: 16 }}>
+          <div className="method-box" style={{ borderColor: RED }}>
+            <div className="method-title" style={{ color: RED }}>Three common forms of leakage</div>
+            <ol style={{ fontSize: '0.85rem', lineHeight: 1.8, paddingLeft: 18, margin: '10px 0 0' }}>
+              <li><b>Train/test contamination</b> — fitting a scaler or feature selector on the full dataset before splitting.</li>
+              <li><b>Target leakage</b> — a feature that secretly encodes the answer (e.g. "refunded" when predicting "will purchase").</li>
+              <li><b>Temporal leakage</b> — using future information to predict the past.</li>
+            </ol>
+          </div>
+          <div className="method-box" style={{ borderColor: GREEN }}>
+            <div className="method-title" style={{ color: GREEN }}>How we prevented it</div>
+            <ul style={{ fontSize: '0.85rem', lineHeight: 1.8, paddingLeft: 18, margin: '10px 0 0' }}>
+              <li>All preprocessing (StandardScaler) lives <b>inside the Pipeline</b> — it can only see training rows.</li>
+              <li>Feature selection (Lasso + Pearson) was computed on the <b>training split only</b>, then applied to the test set.</li>
+              <li>The test set was never used to make any decisions — only to report final metrics.</li>
+            </ul>
+          </div>
+        </div>
+        <CodeBlock>{`# ❌ WRONG — scaler fitted on ALL data before splitting
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)          # test rows contaminate the scaler
+X_train, X_test = train_test_split(X_scaled, ...)
+
+# ✅ RIGHT — scaler lives inside the Pipeline, only sees training rows
+pipeline = Pipeline([
+    ("sc",    StandardScaler()),   # .fit() called only on X_train inside Pipeline
+    ("model", XGBClassifier()),
+])
+pipeline.fit(X_train, y_train)     # scaler fitted here, on train only
+pipeline.predict(X_test)           # scaler .transform() applied here, no leakage`}
+        </CodeBlock>
+      </div>
+
+      {/* ── 8. Feature importance ── */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <SectionTitle>XGBoost feature importance (F-score)</SectionTitle>
@@ -277,7 +591,7 @@ export default function Science() {
         </div>
       </div>
 
-      {/* ── 5. Models explained ── */}
+      {/* ── 9. Models explained ── */}
       <div className="card">
         <SectionTitle>How XGBoost works — gradient boosting in brief</SectionTitle>
         <Note>Both models share the same algorithm family; only their target and hyperparameters differ.</Note>
@@ -346,15 +660,14 @@ export default function Science() {
         </div>
       </div>
 
-      {/* ── 6. Model comparison ── */}
+      {/* ── 10. Model comparison ── */}
       <div className="card">
         <SectionTitle>Model comparison — test-set performance</SectionTitle>
         <Note>
-          All models trained on the same 85 % split (14,772 hours) and evaluated on the
-          held-out 15 % (2,607 hours). Dummy baselines show the improvement from ML.
+          All models trained on the same 85 % split ({nTrain.toLocaleString()} hours) and evaluated on the
+          held-out 15 % ({nTest.toLocaleString()} hours). Dummy baselines show the improvement from ML.
         </Note>
         <div className="grid-2" style={{ gap: 28 }}>
-          {/* Classification */}
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 10, color: RED }}>
               Classification — demand_high (0/1)
@@ -379,7 +692,6 @@ export default function Science() {
             </div>
           </div>
 
-          {/* Regression */}
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 10, color: ORANGE }}>
               Regression — cnt (bikes/hour)
@@ -406,7 +718,7 @@ export default function Science() {
         </div>
       </div>
 
-      {/* ── 7. Actual vs predicted scatter ── */}
+      {/* ── 11. Actual vs predicted ── */}
       <div className="card">
         <SectionTitle>Regression — actual vs predicted (300 sample points)</SectionTitle>
         <Note>
@@ -431,7 +743,7 @@ export default function Science() {
         </div>
       </div>
 
-      {/* ── 8. Residuals histogram ── */}
+      {/* ── 12. Residuals ── */}
       <div className="card">
         <SectionTitle>Residual distribution — regressor</SectionTitle>
         <Note>
@@ -445,7 +757,7 @@ export default function Science() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
               <XAxis dataKey="bin" tick={{ fontSize: 11 }} label={{ value: 'Residual (bikes/hr)', position: 'insideBottom', offset: -4, style: { fontSize: 11, fill: '#888' } }} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v, n) => [v, 'Count']} labelFormatter={v => `Bin starting at ${v}`} />
+              <Tooltip formatter={(v) => [v, 'Count']} labelFormatter={v => `Bin starting at ${v}`} />
               <Bar dataKey="count" fill={ORANGE} radius={[2, 2, 0, 0]} isAnimationActive={false} />
               <ReferenceLine x={0} stroke={RED} strokeDasharray="4 2" />
             </BarChart>

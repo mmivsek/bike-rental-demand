@@ -672,6 +672,40 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
 .mp-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
 .mp-value { font-size: 1rem; font-weight: 800; margin-top: 2px; }
 
+/* ── Deviation explainer panel ───────────────────────────────────────────── */
+.deviation-panel { padding: 16px 20px; }
+
+.dp-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.dp-bulb { font-size: 1.4rem; flex-shrink: 0; line-height: 1.2; }
+.dp-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.dp-sub   { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+
+.dp-drivers { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.dp-driver-row {
+  display: grid;
+  grid-template-columns: 18px 22px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  font-size: 0.85rem;
+}
+.dp-arrow   { font-weight: 800; font-size: 1rem; text-align: center; }
+.dp-icon    { text-align: center; }
+.dp-factor  { font-weight: 500; }
+.dp-impact  { font-size: 0.75rem; font-weight: 600; text-align: right; white-space: nowrap; }
+.dp-up      { color: #27ae60; }
+.dp-down    { color: #c0392b; }
+.dp-neutral { color: #aaa; }
+
+.dp-footnote { font-size: 0.72rem; color: #aaa; margin-top: 2px; }
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .predictor-grid { grid-template-columns: 1fr; }

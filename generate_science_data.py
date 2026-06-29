@@ -160,6 +160,17 @@ out = {
     "training_rows": len(df),
 }
 
+# ── Feature stats for deviation explainer ────────────────────────────────────
+feature_stats = {
+    feat: {
+        "mean": round(float(X[feat].mean()), 4),
+        "std":  round(float(X[feat].std()),  4),
+    }
+    for feat in FINAL_FEATURES
+}
+out["feature_stats"] = feature_stats
+out["avg_cnt"] = round(float(y_reg.mean()), 1)
+
 out_path = Path("frontend/public/science-data.json")
 out_path.write_text(json.dumps(out, indent=2))
 print(f"Saved {out_path}  ({out_path.stat().st_size // 1024} KB)")

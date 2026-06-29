@@ -364,6 +364,116 @@ function LiveClock() {
   )
 }
 
+// ── Deviation explainer ───────────────────────────────────────────────────────
+function computeDrivers(hr, selectedDate, weathersit, tempC, humPct, windKmh, predResult, stats, regImp, corrMap) {
+  const month   = selectedDate.getMonth() + 1
+  const season  = monthToSeason(month)
+  const weekday = (selectedDate.getDay() + 6) % 7  // 0=Mon … 6=Sun
+
+  const featureVals = {
+    hr:          hr,
+    hr_sin:      Math.sin(2 * Math.PI * hr / 24),
+    hr_cos:      Math.cos(2 * Math.PI * hr / 24),
+    mnth:        month,
+    mnth_sin:    Math.sin(2 * Math.PI * month / 12),
+    mnth_cos:    Math.cos(2 * Math.PI * month / 12),
+    temp:        tempC / 41,
+    hum:         humPct / 100,
+    windspeed:   windKmh / (1.609 * 67),
+    weathersit:  weathersit,
+    rush_hour:   predResult.is_rush   ? 1 : 0,
+    peak_season: (season === 2 || season === 3) ? 1 : 0,
+    bad_weather: weathersit === 3     ? 1 : 0,
+    is_night:    (hr < 6 || hr > 22)  ? 1 : 0,
+    is_weekend:  weekday >= 5         ? 1 : 0,
+    rush_workday: (predResult.is_rush && predResult.is_workday) ? 1 : 0,
+    comfort:     (tempC / 41) * (1 - humPct / 100) * (1 - windKmh / (1.609 * 67)),
+  }
+
+  const hrLabel = hr >= 7 && hr <= 9 ? 'morning rush' : hr >= 17 && hr <= 18 ? 'evening rush' : hr < 6 || hr > 22 ? 'night' : hr < 12 ? 'morning' : hr < 14 ? 'midday' : hr < 17 ? 'afternoon' : 'evening'
+  const DRIVERS = [
+    { key: 'hour',     icon: '🕐', label: `${String(hr).padStart(2,'0')}:00 — ${hrLabel}`, features: ['hr', 'hr_sin', 'hr_cos', 'rush_hour', 'is_night'] },
+    { key: 'month',    icon: '📅', label: `${new Date(2000, month-1).toLocaleString('en-US',{month:'long'})} (${SEASON_NAMES[season]})`, features: ['mnth', 'mnth_sin', 'mnth_cos', 'peak_season'] },
+    { key: 'temp',     icon: '🌡', label: `Temperature ${tempC}°C`,      features: ['temp'] },
+    { key: 'humidity', icon: '💧', label: `Humidity ${humPct}%`,          features: ['hum'] },
+    { key: 'wind',     icon: '🌬', label: `Wind ${windKmh} km/h`,         features: ['windspeed'] },
+    { key: 'weather',  icon: WX_ICON[weathersit], label: WEATHER_NAMES[weathersit], features: ['weathersit', 'bad_weather'] },
+  ]
+
+  return DRIVERS.map(d => {
+    const score = d.features.reduce((sum, f) => {
+      const s   = stats[f]
+      const imp = regImp[f] || 0
+      if (!s || s.std < 0.0001) return sum
+      const val      = featureVals[f] !== undefined ? featureVals[f] : 0
+      // Multiply by sign of corr_cnt so "good" deviations always score positive
+      const corrSign = (corrMap[f] ?? 0) < 0 ? -1 : 1
+      return sum + ((val - s.mean) / s.std) * imp * corrSign
+    }, 0)
+    return { ...d, score }
+  })
+    .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+    .slice(0, 4)
+}
+
+const IMPACT_LABEL = score => {
+  const abs = Math.abs(score)
+  if (abs > 0.04) return 'strongest factor'
+  if (abs > 0.02) return 'significant impact'
+  if (abs > 0.008) return 'moderate impact'
+  return 'minor impact'
+}
+
+function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, prediction, scienceData, stale }) {
+  if (!prediction || !scienceData?.feature_stats) return null
+
+  const regImp  = Object.fromEntries(
+    (scienceData.reg_importance_ranked || []).map(r => [r.feature, r.importance])
+  )
+  const corrMap = Object.fromEntries(
+    (scienceData.features || []).map(f => [f.name, f.corr_cnt])
+  )
+  const drivers = computeDrivers(hr, selectedDate, weathersit, tempC, humPct, windKmh, prediction, scienceData.feature_stats, regImp, corrMap)
+  const avgCnt   = scienceData.avg_cnt || 189
+  const delta    = prediction.rental_count - avgCnt
+  const deltaPct = Math.round(Math.abs(delta) / avgCnt * 100)
+
+  return (
+    <div className="card deviation-panel" style={{ opacity: stale ? 0.5 : 1, transition: 'opacity .2s' }}>
+      <div className="dp-header">
+        <span className="dp-bulb">💡</span>
+        <div>
+          <div className="dp-title">What's driving the deviation from an average hour?</div>
+          <div className="dp-sub">
+            Prediction: <b>{prediction.rental_count} bikes/hr</b> —{' '}
+            <span style={{ color: delta >= 0 ? '#27ae60' : '#c0392b', fontWeight: 700 }}>
+              {delta >= 0 ? '+' : ''}{Math.round(delta)} bikes
+            </span>
+            {' '}vs. dataset average of {avgCnt}/hr ({deltaPct}% {delta >= 0 ? 'above' : 'below'})
+            {stale && <span style={{ color: '#aaa', marginLeft: 8 }}>— re-predict to refresh</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="dp-drivers">
+        {drivers.map(d => (
+          <div key={d.key} className="dp-driver-row">
+            <span className={`dp-arrow ${d.score > 0.005 ? 'dp-up' : d.score < -0.005 ? 'dp-down' : 'dp-neutral'}`}>
+              {d.score > 0.005 ? '↑' : d.score < -0.005 ? '↓' : '→'}
+            </span>
+            <span className="dp-icon">{d.icon}</span>
+            <span className="dp-factor">{d.label}</span>
+            <span className="dp-impact" style={{ color: d.score > 0.005 ? '#27ae60' : d.score < -0.005 ? '#c0392b' : '#aaa' }}>
+              {IMPACT_LABEL(d.score)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="dp-footnote">Ranked by XGBoost feature importance × deviation from dataset mean — approximate, not exact SHAP.</div>
+    </div>
+  )
+}
+
 // ── Demand level helper ───────────────────────────────────────────────────────
 const DEMAND_LEVELS = [
   { key: 'very-low',  arrow: '↓↓', label: 'Very Low',  desc: 'Quiet — <50 bikes/hr',      min: 0,   max: 50  },
@@ -414,6 +524,11 @@ export default function Predictor() {
   function updateComparison(id, field, value) {
     setComparisons(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c))
   }
+
+  const [scienceData, setScienceData] = useState(null)
+  useEffect(() => {
+    fetch('/science-data.json').then(r => r.json()).then(setScienceData).catch(() => {})
+  }, [])
 
   const [prediction, setPrediction]         = useState(null)
   const [predictionStale, setPredictionStale] = useState(false)
@@ -508,6 +623,13 @@ export default function Predictor() {
         windKmh={windKmh}
         currentHr={hr}
         comparisons={comparisons}
+      />
+
+      <DeviationPanel
+        hr={hr} selectedDate={selectedDate} weathersit={weathersit}
+        tempC={tempC} humPct={humPct} windKmh={windKmh}
+        prediction={prediction} scienceData={scienceData}
+        stale={predictionStale}
       />
 
       {/* Comparison scenario cards */}

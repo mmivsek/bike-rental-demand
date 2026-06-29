@@ -1743,5 +1743,100 @@
     }
   },
   "feature_count": 23,
-  "training_rows": 17379
+  "training_rows": 17379,
+  "feature_stats": {
+    "bad_weather": {
+      "mean": 0.0818,
+      "std": 0.2741
+    },
+    "comfort": {
+      "mean": 0.1472,
+      "std": 0.1054
+    },
+    "holiday": {
+      "mean": 0.0288,
+      "std": 0.1672
+    },
+    "hr": {
+      "mean": 11.5468,
+      "std": 6.9144
+    },
+    "hr_cos": {
+      "mean": -0.0033,
+      "std": 0.7074
+    },
+    "hr_sin": {
+      "mean": -0.0045,
+      "std": 0.7068
+    },
+    "hum": {
+      "mean": 0.628,
+      "std": 0.1916
+    },
+    "is_night": {
+      "mean": 0.246,
+      "std": 0.4307
+    },
+    "is_weekend": {
+      "mean": 0.2885,
+      "std": 0.4531
+    },
+    "mnth": {
+      "mean": 6.5378,
+      "std": 3.4388
+    },
+    "mnth_cos": {
+      "mean": -0.0065,
+      "std": 0.7088
+    },
+    "mnth_sin": {
+      "mean": -0.0055,
+      "std": 0.7054
+    },
+    "peak_season": {
+      "mean": 0.5124,
+      "std": 0.4999
+    },
+    "rush_hour": {
+      "mean": 0.2513,
+      "std": 0.4338
+    },
+    "rush_workday": {
+      "mean": 0.1716,
+      "std": 0.3771
+    },
+    "season": {
+      "mean": 2.5016,
+      "std": 1.1069
+    },
+    "temp": {
+      "mean": 0.497,
+      "std": 0.1926
+    },
+    "temp_workday": {
+      "mean": 0.3443,
+      "std": 0.2825
+    },
+    "weathersit": {
+      "mean": 1.4251,
+      "std": 0.6388
+    },
+    "weekday": {
+      "mean": 3.0037,
+      "std": 2.0058
+    },
+    "weekday_cos": {
+      "mean": 0.0034,
+      "std": 0.7076
+    },
+    "windspeed": {
+      "mean": 0.2013,
+      "std": 0.1076
+    },
+    "yr": {
+      "mean": 0.5026,
+      "std": 0.5
+    }
+  },
+  "avg_cnt": 189.5
 }
