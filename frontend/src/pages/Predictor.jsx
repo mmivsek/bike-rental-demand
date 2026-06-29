@@ -293,6 +293,42 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
   )
 }
 
+// ── Live clock ────────────────────────────────────────────────────────────────
+const CLOCKS = [
+  { label: 'Ljubljana', flag: '🇸🇮', tz: 'Europe/Ljubljana' },
+  { label: 'Washington D.C.', flag: '🇺🇸', tz: 'America/New_York' },
+]
+
+function LiveClock() {
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="clock-widget">
+      {CLOCKS.map((c, i) => (
+        <>
+          {i > 0 && <div key={`div-${c.tz}`} className="clock-sep" />}
+          <div key={c.tz} className="clock-city">
+            <span className="clock-flag">{c.flag}</span>
+            <div>
+              <div className="clock-label">{c.label}</div>
+              <div className="clock-time">
+                {now.toLocaleTimeString('en-GB', { timeZone: c.tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </div>
+              <div className="clock-date">
+                {now.toLocaleDateString('en-GB', { timeZone: c.tz, weekday: 'short', month: 'short', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
+        </>
+      ))}
+    </div>
+  )
+}
+
 // ── Demand level helper ───────────────────────────────────────────────────────
 const DEMAND_LEVELS = [
   { key: 'very-low',  arrow: '↓↓', label: 'Very Low',  desc: 'Quiet — <50 bikes/hr',      min: 0,   max: 50  },
@@ -399,7 +435,7 @@ export default function Predictor() {
 
   return (
     <div>
-      {/* Weather bar */}
+      {/* Weather bar + clock */}
       <div className="weather-bar">
         <button className="btn btn-weather" onClick={handleFetchWeather} disabled={weatherLoading}>
           {weatherLoading ? '...' : '🌤'} Get real-time D.C. weather
@@ -407,6 +443,7 @@ export default function Predictor() {
         <span className="weather-status">
           {weatherStatus ?? 'Fetches live conditions from Open-Meteo (no API key needed)'}
         </span>
+        <LiveClock />
       </div>
 
       <DayForecastChart
