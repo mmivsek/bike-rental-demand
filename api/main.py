@@ -109,6 +109,32 @@ class PredictRequest(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+@app.post("/predict-day")
+def predict_day(req: PredictRequest):
+    """Predict all 24 hours of a day using the same weather conditions."""
+    d = _date(req.year, req.month, req.day)
+    is_workday = d.weekday() < 5
+    hours = []
+    for hr in range(24):
+        try:
+            X = build_feature_row(
+                req.year, req.month, req.day, hr,
+                req.weathersit, req.temp_c, req.hum_pct, req.wind_kmh,
+            )
+            rental_count = max(0, int(reg.predict(X)[0]))
+            demand_class = int(clf.predict(X)[0])
+            demand_prob  = round(float(clf.predict_proba(X)[0][1]), 3)
+        except Exception:
+            rental_count, demand_class, demand_prob = 0, 0, 0.0
+        hours.append({
+            "hr": hr,
+            "rental_count": rental_count,
+            "demand_class": demand_class,
+            "demand_prob": demand_prob,
+        })
+    return {"hours": hours, "is_workday": is_workday}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "features": len(FEATS)}

@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { predict } from '../lib/api.js'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, ReferenceLine,
+} from 'recharts'
+import { predict, predictDay } from '../lib/api.js'
 import { fetchDCWeather, getDateType, fetchWeatherForDateTime } from '../lib/weather.js'
 import { SEASON_NAMES, WEATHER_NAMES, WEEKDAY_NAMES } from '../lib/constants.js'
 
@@ -151,6 +155,144 @@ function ContextTable({ selectedDate, hr, weathersit, tempC, humPct, windKmh, re
   )
 }
 
+// ── Custom tooltip for the day forecast chart ─────────────────────────────────
+function DayChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{`${String(label).padStart(2,'0')}:00`}</div>
+      {payload.map(p => (
+        <div key={p.name} style={{ color: p.color }}>
+          {p.name}: <b>{Math.round(p.value)}</b> bikes/hr
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Day forecast chart ────────────────────────────────────────────────────────
+function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr }) {
+  const [dayData, setDayData]   = useState(null)
+  const [baseline, setBaseline] = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [err, setErr]           = useState(null)
+  const timerRef                = useRef(null)
+
+  // Load baseline once
+  useEffect(() => {
+    fetch('/chart-data.json')
+      .then(r => r.json())
+      .then(d => setBaseline(d.hourly))
+      .catch(() => {})
+  }, [])
+
+  // Debounced day forecast fetch
+  useEffect(() => {
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      setLoading(true)
+      setErr(null)
+      try {
+        const result = await predictDay({
+          year:  selectedDate.getFullYear(),
+          month: selectedDate.getMonth() + 1,
+          day:   selectedDate.getDate(),
+          hr: 12,               // hr is irrelevant for day forecast; API ignores per-hour override
+          weathersit,
+          temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
+        })
+        setDayData(result)
+      } catch (e) {
+        setErr(e.message)
+      } finally {
+        setLoading(false)
+      }
+    }, 600)
+    return () => clearTimeout(timerRef.current)
+  }, [selectedDate, weathersit, tempC, humPct, windKmh])
+
+  // Merge day forecast with baseline
+  const chartData = baseline?.map(b => {
+    const row = { hr: b.hr, avg: dayData?.is_workday ? b.workday : b.weekend }
+    if (dayData) {
+      const h = dayData.hours.find(x => x.hr === b.hr)
+      if (h) row.forecast = h.rental_count
+    }
+    return row
+  })
+
+  const isWorkday = dayData ? dayData.is_workday : selectedDate.getDay() !== 0 && selectedDate.getDay() !== 6
+  const dateLabel = selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
+  return (
+    <div className="card day-chart-card">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>
+          Hourly demand forecast — {dateLabel}
+        </div>
+        {loading && <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Fetching…</span>}
+      </div>
+      <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: 12, marginTop: 2 }}>
+        Red = model prediction with selected weather · Gray dashed = historical average for a {isWorkday ? 'working day' : 'weekend day'}
+      </p>
+
+      {err && (
+        <div className="error-box" style={{ marginBottom: 8 }}>
+          {err.includes('fetch') || err.includes('Failed')
+            ? 'Start the FastAPI server on port 8000 to see predictions.'
+            : err}
+        </div>
+      )}
+
+      <div className="chart-wrap">
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis
+              dataKey="hr"
+              tickFormatter={v => `${v}:00`}
+              interval={2}
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis tick={{ fontSize: 11 }} unit=" bikes" width={68} />
+            <Tooltip content={<DayChartTooltip />} />
+            <Legend />
+            {/* vertical line at current selected hour */}
+            <ReferenceLine
+              x={currentHr}
+              stroke="#c0392b"
+              strokeDasharray="4 2"
+              strokeWidth={1.5}
+              label={{ value: `${currentHr}:00`, position: 'top', style: { fontSize: 10, fill: '#c0392b' } }}
+            />
+            <Line
+              type="monotone"
+              dataKey="avg"
+              name={isWorkday ? 'Avg working day' : 'Avg weekend'}
+              stroke="#aaa"
+              strokeDasharray="5 3"
+              strokeWidth={1.8}
+              dot={false}
+              isAnimationActive={false}
+            />
+            {dayData && (
+              <Line
+                type="monotone"
+                dataKey="forecast"
+                name="Forecast (these conditions)"
+                stroke="#c0392b"
+                strokeWidth={2.5}
+                dot={false}
+                isAnimationActive={false}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Predictor() {
   const [selectedDate, setSelectedDate] = useState(() => new Date())
@@ -235,6 +377,15 @@ export default function Predictor() {
           {weatherStatus ?? 'Fetches live conditions from Open-Meteo (no API key needed)'}
         </span>
       </div>
+
+      <DayForecastChart
+        selectedDate={selectedDate}
+        weathersit={weathersit}
+        tempC={tempC}
+        humPct={humPct}
+        windKmh={windKmh}
+        currentHr={hr}
+      />
 
       <div className="predictor-grid">
         {/* ── Left: inputs ── */}

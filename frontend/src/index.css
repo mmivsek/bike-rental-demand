@@ -453,6 +453,9 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
   margin: 14px 0 8px;
 }
 
+/* ── Day forecast chart (Predictor page) ────────────────────────────────── */
+.day-chart-card { margin-bottom: 18px; }
+
 /* ── Science page ─────────────────────────────────────────────────────────── */
 
 /* Pipeline steps */

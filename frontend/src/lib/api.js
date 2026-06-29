@@ -13,6 +13,19 @@ export async function predict(payload) {
   return res.json()
 }
 
+export async function predictDay(payload) {
+  const res = await fetch(`${API_URL}/predict-day`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `API error ${res.status}`)
+  }
+  return res.json()
+}
+
 export async function checkHealth() {
   const res = await fetch(`${API_URL}/health`)
   if (!res.ok) throw new Error('API unreachable')
