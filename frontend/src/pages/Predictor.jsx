@@ -302,7 +302,7 @@ const CLOCKS = [
 function LiveClock() {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
+    const id = setInterval(() => setNow(new Date()), 60000)
     return () => clearInterval(id)
   }, [])
 
@@ -316,7 +316,7 @@ function LiveClock() {
             <div>
               <div className="clock-label">{c.label}</div>
               <div className="clock-time">
-                {now.toLocaleTimeString('en-GB', { timeZone: c.tz, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {now.toLocaleTimeString('en-GB', { timeZone: c.tz, hour: '2-digit', minute: '2-digit' })}
               </div>
               <div className="clock-date">
                 {now.toLocaleDateString('en-GB', { timeZone: c.tz, weekday: 'short', month: 'short', day: 'numeric' })}
@@ -370,10 +370,16 @@ export default function Predictor() {
   const [windKmh, setWindKmh]           = useState(15)
 
   const [prediction, setPrediction]         = useState(null)
+  const [predictionStale, setPredictionStale] = useState(false)
   const [loading, setLoading]               = useState(false)
   const [weatherLoading, setWeatherLoading] = useState(false)
   const [weatherStatus, setWeatherStatus]   = useState(null)
   const [error, setError]                   = useState(null)
+
+  // Mark stale whenever inputs change after a prediction exists
+  useEffect(() => {
+    if (prediction) setPredictionStale(true)
+  }, [selectedDate, hr, weathersit, tempC, humPct, windKmh])
 
   const dateStr = dateToStr(selectedDate)
 
@@ -404,6 +410,7 @@ export default function Predictor() {
         temp_c: w.tempC, hum_pct: w.humPct, wind_kmh: w.windKmh,
       })
       setPrediction(result)
+      setPredictionStale(false)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -423,6 +430,7 @@ export default function Predictor() {
         temp_c: tempC, hum_pct: humPct, wind_kmh: windKmh,
       })
       setPrediction(result)
+      setPredictionStale(false)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -498,6 +506,15 @@ export default function Predictor() {
           <Slider label="Temperature" value={tempC}   onChange={setTempC}   min={-5}  max={40}  unit=" °C"   />
           <Slider label="Humidity"    value={humPct}  onChange={setHumPct}  min={0}   max={100} unit=" %"    />
           <Slider label="Wind speed"  value={windKmh} onChange={setWindKmh} min={0}   max={80}  unit=" km/h" />
+
+          {prediction && (
+            <div className={predictionStale ? 'pred-status pred-status-stale' : 'pred-status pred-status-ok'}>
+              <span className="pred-status-dot" />
+              {predictionStale
+                ? 'Parameters changed — click Predict to update'
+                : 'Prediction matches current inputs'}
+            </div>
+          )}
 
           <div className="btn-predict-wrap">
             <button className="btn btn-primary" onClick={handlePredict} disabled={loading}>
