@@ -2,13 +2,15 @@ import { useState } from 'react'
 import Predictor from './pages/Predictor.jsx'
 import Leaderboard from './pages/Leaderboard.jsx'
 import Charts from './pages/Charts.jsx'
+import Science from './pages/Science.jsx'
 import About from './pages/About.jsx'
 
 const TABS = [
-  { id: 'predictor', label: 'Predictor' },
+  { id: 'predictor',   label: 'Predictor' },
   { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'charts', label: 'Demand Patterns' },
-  { id: 'about', label: 'About the Data' },
+  { id: 'charts',      label: 'Demand Patterns' },
+  { id: 'science',     label: 'ML & Science' },
+  { id: 'about',       label: 'About the Data' },
 ]
 
 export default function App() {
@@ -38,6 +40,7 @@ export default function App() {
         {tab === 'predictor'   && <Predictor />}
         {tab === 'leaderboard' && <Leaderboard />}
         {tab === 'charts'      && <Charts />}
+        {tab === 'science'     && <Science />}
         {tab === 'about'       && <About />}
       </main>
     </div>
