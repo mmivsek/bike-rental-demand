@@ -675,12 +675,22 @@ export default function Predictor() {
       />
 
       {/* Comparison scenario cards */}
-      {(comparisons.length > 0 || true) && (
-        <div className="scenario-row">
-          <div className="scenario-main-tag" style={{ borderTopColor: SCENARIO_COLORS[0] }}>
-            <span className="scenario-dot" style={{ background: SCENARIO_COLORS[0] }} />
-            <span className="scenario-card-label">{SCENARIO_LABELS[0]} — current inputs</span>
-          </div>
+      <div className="scenario-row">
+          {/* Scenario A — read-only summary card, only when comparisons exist */}
+          {comparisons.length > 0 && <div className="scenario-card" style={{ borderTopColor: SCENARIO_COLORS[0] }}>
+            <div className="scenario-card-head">
+              <span className="scenario-dot" style={{ background: SCENARIO_COLORS[0] }} />
+              <span className="scenario-card-label">{SCENARIO_LABELS[0]}</span>
+            </div>
+            <div className="sc-summary-row"><span className="sc-summary-label">Date</span><span>{dateToStr(selectedDate)}</span></div>
+            <div className="sc-summary-row"><span className="sc-summary-label">Hour</span><span>{String(hr).padStart(2,'0')}:00</span></div>
+            <div style={{ borderTop: '1px solid #eee', margin: '6px 0' }} />
+            <div className="sc-summary-row"><span className="sc-summary-label">Weather</span><span>{WX_ICON[weathersit]} {WEATHER_NAMES[weathersit]}</span></div>
+            <div className="sc-summary-row"><span className="sc-summary-label">Temp</span><span>{tempC} °C</span></div>
+            <div className="sc-summary-row"><span className="sc-summary-label">Humidity</span><span>{humPct} %</span></div>
+            <div className="sc-summary-row"><span className="sc-summary-label">Wind</span><span>{windKmh} km/h</span></div>
+            <p style={{ fontSize: '0.7rem', color: '#aaa', margin: '8px 0 0', lineHeight: 1.4 }}>Edit in the input panel ↓</p>
+          </div>}
 
           {comparisons.map((c, i) => (
             <ScenarioCard
@@ -697,8 +707,7 @@ export default function Predictor() {
               + Add comparison
             </button>
           )}
-        </div>
-      )}
+      </div>
 
       <div className="predictor-grid">
         {/* ── Left: inputs ── */}
