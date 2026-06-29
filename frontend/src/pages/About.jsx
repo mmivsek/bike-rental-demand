@@ -1,5 +1,8 @@
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
 import { STATIONS } from '../lib/constants.js'
+import imgBike from '../assets/bike.jpg'
+import imgStation from '../assets/station.jpg'
+import imgMonument from '../assets/monument_station.jpg'
 
 const METRICS = [
   { label: 'Dataset rows', value: '17,379', sub: 'hourly records 2011–2012' },
@@ -81,16 +84,16 @@ export default function About() {
         <div className="section-title">Capital Bikeshare in photos</div>
         <div className="photo-grid">
           <div>
-            <img src="/assets/bike.jpg" alt="Capital Bikeshare bike" />
+            <img src={imgBike} alt="Capital Bikeshare bike" />
             <div className="photo-cap">Capital Bikeshare bicycle — distinctive red design, 3-speed, basket included.</div>
           </div>
           <div>
-            <img src="/assets/station.jpg" alt="Docking station at Eastern Market Metro" />
+            <img src={imgStation} alt="Docking station at Eastern Market Metro" />
             <div className="photo-cap">Docking station at Eastern Market Metro station, D.C.</div>
           </div>
         </div>
         <div style={{ marginTop: 14 }}>
-          <img src="/assets/monument_station.jpg" alt="Station near Washington Monument" style={{ width: '100%', borderRadius: 8, maxHeight: 260, objectFit: 'cover' }} />
+          <img src={imgMonument} alt="Station near Washington Monument" style={{ width: '100%', borderRadius: 8, maxHeight: 260, objectFit: 'cover' }} />
           <div className="photo-cap" style={{ marginTop: 6 }}>Station near the Washington Monument — one of the highest-demand locations in the dataset.</div>
         </div>
       </div>

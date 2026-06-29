@@ -5,8 +5,10 @@ import Charts from './pages/Charts.jsx'
 import Science from './pages/Science.jsx'
 import About from './pages/About.jsx'
 import Architecture from './pages/Architecture.jsx'
+import wDcNeutral from './assets/w_dc_neutral.jpg'
+import wDcRain from './assets/w_dc_rain.jpg'
 
-const DC_IMAGES = ['/images/w_dc_neutral.jpg', '/images/w_dc_rain.jpg']
+const DC_IMAGES = [wDcNeutral, wDcRain]
 
 const TABS = [
   { id: 'predictor',    label: 'Predictor' },
