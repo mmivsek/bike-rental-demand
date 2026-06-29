@@ -407,6 +407,15 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
 .wip-spin { margin-left: auto; font-size: 1rem; color: var(--text-muted); display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .wip-note { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px; line-height: 1.5; }
+.wip-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+.wip-meta-sep { margin: 0 5px; opacity: 0.5; }
+.wip-src-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.wip-src-link:hover { color: var(--red); }
 .wip-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

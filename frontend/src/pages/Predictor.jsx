@@ -109,6 +109,14 @@ function WeatherInfoPanel({ dateStr, hr, onApply }) {
       )}
       {info && !loading && (
         <>
+          <div className="wip-meta">
+            📅 {new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' })}
+            {' '}at <b>{String(hr).padStart(2,'0')}:00</b>
+            <span className="wip-meta-sep">·</span>
+            📍 Washington D.C.
+            <span className="wip-meta-sep">·</span>
+            Source: <a href="https://open-meteo.com" target="_blank" rel="noreferrer" className="wip-src-link">Open-Meteo</a>
+          </div>
           <div className="wip-grid">
             <div className="wip-cell">{WX_ICON[info.weathersit]} <span>{WEATHER_NAMES[info.weathersit]}</span></div>
             <div className="wip-cell">🌡️ <span><b>{info.tempC}</b> °C</span></div>
