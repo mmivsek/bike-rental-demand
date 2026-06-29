@@ -68,6 +68,8 @@ function WeatherInfoPanel({ dateStr, hr, onApply }) {
   const [info, setInfo]       = useState(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr]         = useState(null)
+  const onApplyRef = useRef(onApply)
+  useEffect(() => { onApplyRef.current = onApply }, [onApply])
 
   const dateType = getDateType(dateStr)
   const meta     = WIP_META[dateType]
@@ -82,6 +84,7 @@ function WeatherInfoPanel({ dateStr, hr, onApply }) {
       try {
         const w = await fetchWeatherForDateTime(dateStr, hr)
         setInfo(w)
+        onApplyRef.current(w)
       } catch (e) {
         setErr(e.message)
       } finally {
@@ -127,9 +130,6 @@ function WeatherInfoPanel({ dateStr, hr, onApply }) {
             <div className="wip-cell">💧 <span><b>{info.humPct}</b> %</span></div>
             <div className="wip-cell">🌬️ <span><b>{info.windKmh}</b> km/h</span></div>
           </div>
-          <button className="btn-apply" onClick={() => onApply(info)}>
-            ↓ Apply to predictor
-          </button>
         </>
       )}
     </div>
