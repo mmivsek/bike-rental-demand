@@ -293,6 +293,37 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
   )
 }
 
+// ── Demand level helper ───────────────────────────────────────────────────────
+const DEMAND_LEVELS = [
+  { key: 'very-low',  arrow: '↓↓', label: 'Very Low',  desc: 'Quiet — <50 bikes/hr',      min: 0,   max: 50  },
+  { key: 'low',       arrow: '↓',  label: 'Low',        desc: 'Relaxed — 51–150 bikes/hr', min: 51,  max: 150 },
+  { key: 'medium',    arrow: '→',  label: 'Moderate',   desc: 'Average — 151–300 bikes/hr', min: 151, max: 300 },
+  { key: 'high',      arrow: '↑',  label: 'High',       desc: 'Busy — 301–500 bikes/hr',   min: 301, max: 500 },
+  { key: 'very-high', arrow: '↑↑', label: 'Very High',  desc: 'Peak — 501+ bikes/hr',      min: 501, max: Infinity },
+]
+
+function getDemandLevel(rentalCount) {
+  return DEMAND_LEVELS.find(l => rentalCount >= l.min && rentalCount <= l.max) ?? DEMAND_LEVELS[0]
+}
+
+// ── Demand legend ─────────────────────────────────────────────────────────────
+function DemandLegend() {
+  return (
+    <div className="demand-legend">
+      <div className="demand-legend-title">Demand level guide</div>
+      <div className="demand-legend-grid">
+        {DEMAND_LEVELS.map(l => (
+          <div key={l.key} className={`dl-item dl-${l.key}`}>
+            <span className="dl-arrow">{l.arrow}</span>
+            <span className="dl-label">{l.label}</span>
+            <span className="dl-desc">{l.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Predictor() {
   const [selectedDate, setSelectedDate] = useState(() => new Date())
@@ -363,8 +394,8 @@ export default function Predictor() {
     }
   }
 
-  const isHigh = prediction?.demand_class === 1
-  const prob   = prediction ? Math.round(prediction.demand_prob * 100) : 0
+  const prob  = prediction ? Math.round(prediction.demand_prob * 100) : 0
+  const level = prediction ? getDemandLevel(prediction.rental_count) : null
 
   return (
     <div>
@@ -450,15 +481,9 @@ export default function Predictor() {
         <div>
           {prediction ? (
             <>
-              <div className={isHigh ? 'result-high' : 'result-low'}>
-                <div className="result-label">{isHigh ? '↑ HIGH demand' : '↓ LOW demand'}</div>
+              <div className={`result-level result-${level.key}`}>
+                <div className="result-label">{level.arrow} {level.label.toUpperCase()} DEMAND</div>
                 <div className="result-sub">Confidence: {prob}% probability of high demand</div>
-                <div className="prob-bar-wrap">
-                  <div className="prob-bar-track">
-                    <div className="prob-bar-fill" style={{ width: `${prob}%` }} />
-                  </div>
-                  <div className="prob-label">High-demand probability</div>
-                </div>
               </div>
 
               <div className="card">
@@ -481,6 +506,7 @@ export default function Predictor() {
                 Model trained on 2011–2012 Washington D.C. data. Any date after 2012 is treated as 2012
                 for the year feature. Predictions reflect historical patterns, not current fleet size.
               </div>
+              <DemandLegend />
             </>
           ) : (
             <div className="card placeholder">
