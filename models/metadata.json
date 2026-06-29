@@ -1,0 +1,55 @@
+{
+  "feature_names": [
+    "bad_weather",
+    "comfort",
+    "holiday",
+    "hr",
+    "hr_cos",
+    "hr_sin",
+    "hum",
+    "is_night",
+    "is_weekend",
+    "mnth",
+    "mnth_cos",
+    "mnth_sin",
+    "peak_season",
+    "rush_hour",
+    "rush_workday",
+    "season",
+    "temp",
+    "temp_workday",
+    "weathersit",
+    "weekday",
+    "weekday_cos",
+    "windspeed",
+    "yr"
+  ],
+  "demand_threshold": 142,
+  "classifier": {
+    "target": "demand_high",
+    "description": "Predicts high (1) or low (0) demand for a given hour",
+    "test_accuracy": 0.951,
+    "test_roc_auc": 0.989,
+    "params": {
+      "n_estimators": 200,
+      "max_depth": 6,
+      "learning_rate": 0.1,
+      "subsample": 0.8
+    }
+  },
+  "regressor": {
+    "target": "cnt",
+    "description": "Predicts hourly rental count",
+    "test_r2": 0.955,
+    "test_mae": 22.8,
+    "test_rmse": 37.8,
+    "params": {
+      "n_estimators": 400,
+      "max_depth": 6,
+      "learning_rate": 0.05,
+      "subsample": 0.8
+    }
+  },
+  "training_rows": 17379,
+  "random_state": 42
+}
