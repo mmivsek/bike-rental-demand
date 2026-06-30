@@ -198,21 +198,13 @@ function SelectedHourLabel({ viewBox, hr, date }) {
 }
 
 // ── Day forecast chart ────────────────────────────────────────────────────────
-function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr, comparisons = [] }) {
+function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, currentHr, comparisons = [], baseline }) {
   const [dayData, setDayData]     = useState(null)
-  const [baseline, setBaseline]   = useState(null)
   const [loading, setLoading]     = useState(false)
   const [err, setErr]             = useState(null)
   const [compResults, setCompResults] = useState({})
   const timerRef     = useRef(null)
   const compTimerRef = useRef(null)
-
-  useEffect(() => {
-    fetch('/chart-data.json')
-      .then(r => r.json())
-      .then(d => setBaseline(d.hourly))
-      .catch(() => {})
-  }, [])
 
   // Primary forecast
   useEffect(() => {
@@ -466,7 +458,7 @@ const IMPACT_LABEL = score => {
   return 'minor impact'
 }
 
-function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, prediction, scienceData, stale }) {
+function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, prediction, scienceData, baseline, stale }) {
   if (!prediction || !scienceData?.feature_stats) return null
 
   const regImp  = Object.fromEntries(
@@ -476,7 +468,17 @@ function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, 
     (scienceData.features || []).map(f => [f.name, f.corr_cnt])
   )
   const drivers = computeDrivers(hr, selectedDate, weathersit, tempC, humPct, windKmh, prediction, scienceData.feature_stats, regImp, corrMap)
-  const avgCnt   = scienceData.avg_cnt || 189
+
+  const weekday = selectedDate.getDay()
+  const isWorkday = weekday >= 1 && weekday <= 5
+  const baseRow = baseline?.find(b => b.hr === hr)
+  const avgCnt = baseRow
+    ? Math.round(isWorkday ? baseRow.workday : baseRow.weekend)
+    : (scienceData.avg_cnt || 189)
+  const avgLabel = baseRow
+    ? `avg ${isWorkday ? 'working day' : 'weekend'} at ${String(hr).padStart(2, '0')}:00`
+    : 'dataset average'
+
   const delta    = prediction.rental_count - avgCnt
   const deltaPct = Math.round(Math.abs(delta) / avgCnt * 100)
 
@@ -491,7 +493,7 @@ function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, 
             <span style={{ color: delta >= 0 ? '#27ae60' : '#c0392b', fontWeight: 700 }}>
               {delta >= 0 ? '+' : ''}{Math.round(delta)} bikes
             </span>
-            {' '}vs. dataset average of {avgCnt}/hr ({deltaPct}% {delta >= 0 ? 'above' : 'below'})
+            {' '}vs. {avgLabel} ({avgCnt} bikes/hr, {deltaPct}% {delta >= 0 ? 'above' : 'below'})
             {stale && <span style={{ color: '#aaa', marginLeft: 8 }}>— re-predict to refresh</span>}
           </div>
         </div>
@@ -511,7 +513,7 @@ function DeviationPanel({ hr, selectedDate, weathersit, tempC, humPct, windKmh, 
           </div>
         ))}
       </div>
-      <div className="dp-footnote">Ranked by XGBoost feature importance × deviation from dataset mean — approximate, not exact SHAP.</div>
+      <div className="dp-footnote">Ranked by XGBoost feature importance × deviation from dataset mean — approximate, not exact SHAP. Baseline = historical average for the same hour and day type.</div>
     </div>
   )
 }
@@ -570,6 +572,11 @@ export default function Predictor() {
   const [scienceData, setScienceData] = useState(null)
   useEffect(() => {
     fetch('/science-data.json').then(r => r.json()).then(setScienceData).catch(() => {})
+  }, [])
+
+  const [baseline, setBaseline] = useState(null)
+  useEffect(() => {
+    fetch('/chart-data.json').then(r => r.json()).then(d => setBaseline(d.hourly)).catch(() => {})
   }, [])
 
   const [prediction, setPrediction]         = useState(null)
@@ -665,12 +672,14 @@ export default function Predictor() {
         windKmh={windKmh}
         currentHr={hr}
         comparisons={comparisons}
+        baseline={baseline}
       />
 
       <DeviationPanel
         hr={hr} selectedDate={selectedDate} weathersit={weathersit}
         tempC={tempC} humPct={humPct} windKmh={windKmh}
         prediction={prediction} scienceData={scienceData}
+        baseline={baseline}
         stale={predictionStale}
       />
 
