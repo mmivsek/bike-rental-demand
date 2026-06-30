@@ -1,8 +1,8 @@
-api/
-models/
-dataset/
-assets/
-images/
+/api/
+/models/
+/dataset/
+/assets/
+/images/
 *.pkl
 *.py
 *.qmd
