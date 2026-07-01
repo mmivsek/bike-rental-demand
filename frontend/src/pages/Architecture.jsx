@@ -111,21 +111,22 @@ function ArchDiagram() {
   const GREEN  = '#27ae60'
   const PURPLE = '#8e44ad'
 
-  // Arrow marker helper
+  const W = 820
+  const H = 418
+
+  // Arrowhead marker
   const Marker = ({ id, color }) => (
     <marker id={id} markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
       <polygon points="0 0, 9 3.5, 0 7" fill={color} />
     </marker>
   )
 
-  // Rect node (SVG)
-  const N = ({ x, y, w, h, color, title, sub, rx = 8 }) => (
+  // Rect node
+  const N = ({ x, y, w, h = 68, color, title, sub }) => (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={rx}
-        fill="white" stroke={color} strokeWidth="2.5"
-        filter="url(#shadow)"
-      />
-      <text x={x + w / 2} y={sub ? y + h / 2 - 5 : y + h / 2 + 5}
+      <rect x={x} y={y} width={w} height={h} rx={8}
+        fill="white" stroke={color} strokeWidth="2.5" filter="url(#sh)" />
+      <text x={x + w / 2} y={sub ? y + h / 2 - 4 : y + h / 2 + 5}
         textAnchor="middle" fontSize="13" fontWeight="700" fill={color} fontFamily="sans-serif">
         {title}
       </text>
@@ -138,14 +139,12 @@ function ArchDiagram() {
     </g>
   )
 
-  // Stadium / pill node (for external services)
-  const Pill = ({ x, y, w, h, color, title, sub }) => (
+  // Pill node (external services)
+  const Pill = ({ x, y, w, h = 68, color, title, sub }) => (
     <g>
       <rect x={x} y={y} width={w} height={h} rx={h / 2}
-        fill="white" stroke={color} strokeWidth="2.5"
-        filter="url(#shadow)"
-      />
-      <text x={x + w / 2} y={sub ? y + h / 2 - 5 : y + h / 2 + 5}
+        fill="white" stroke={color} strokeWidth="2.5" filter="url(#sh)" />
+      <text x={x + w / 2} y={sub ? y + h / 2 - 4 : y + h / 2 + 5}
         textAnchor="middle" fontSize="13" fontWeight="700" fill={color} fontFamily="sans-serif">
         {title}
       </text>
@@ -158,118 +157,124 @@ function ArchDiagram() {
     </g>
   )
 
-  // Labeled arrow line
-  const Arr = ({ x1, y1, x2, y2, label, color, markerId, labelX, labelY, labelAnchor = 'middle' }) => (
-    <g>
-      <line x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={color} strokeWidth="2" markerEnd={`url(#${markerId})`} />
-      {label && (
-        <text x={labelX ?? (x1 + x2) / 2} y={labelY ?? (y1 + y2) / 2 - 5}
-          textAnchor={labelAnchor} fontSize="10" fill={color} fontFamily="sans-serif" fontStyle="italic">
+  // Arrow label badge: white pill bg + italic text — always readable regardless of what's behind it
+  const Lbl = ({ cx, cy, label, color }) => {
+    const bw = Math.round(label.length * 5.8 + 14)
+    return (
+      <g>
+        <rect x={cx - bw / 2} y={cy - 12} width={bw} height={16}
+          fill="white" fillOpacity="0.95" stroke={color} strokeWidth="0.8"
+          strokeOpacity="0.35" rx="3" />
+        <text x={cx} y={cy} textAnchor="middle"
+          fontSize="10" fill={color} fontFamily="sans-serif" fontStyle="italic">
           {label}
         </text>
-      )}
-    </g>
-  )
+      </g>
+    )
+  }
 
-  // Labeled path (for bent/cross connections)
-  const ArrPath = ({ d, label, color, markerId, labelX, labelY }) => (
-    <g>
-      <path d={d} stroke={color} strokeWidth="2" fill="none"
-        strokeDasharray="6,3" markerEnd={`url(#${markerId})`} />
-      {label && (
-        <text x={labelX} y={labelY}
-          textAnchor="middle" fontSize="10" fill={color} fontFamily="sans-serif" fontStyle="italic">
-          {label}
-        </text>
-      )}
-    </g>
+  // Straight arrow (no label — use Lbl separately for precise placement)
+  const Line = ({ x1, y1, x2, y2, color, mid }) => (
+    <line x1={x1} y1={y1} x2={x2} y2={y2}
+      stroke={color} strokeWidth="2" markerEnd={`url(#ah-${mid})`} />
   )
-
-  const W = 820
-  const H = 395
 
   return (
     <div style={{ overflowX: 'auto' }}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%"
-        style={{ maxWidth: W, display: 'block', margin: '0 auto', fontFamily: 'sans-serif' }}>
+        style={{ maxWidth: W, display: 'block', margin: '0 auto' }}>
         <defs>
-          <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#00000018" />
+          <filter id="sh" x="-15%" y="-15%" width="130%" height="130%">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#00000015" />
           </filter>
           <Marker id="ah-grey"   color={GREY}   />
           <Marker id="ah-red"    color={RED}    />
           <Marker id="ah-green"  color={GREEN}  />
           <Marker id="ah-blue"   color={BLUE}   />
           <Marker id="ah-purple" color={PURPLE} />
-          <Marker id="ah-amber"  color={AMBER}  />
         </defs>
 
-        {/* ── Offline zone ────────────────────────────────────── */}
-        <rect x="10" y="10" width="800" height="152" rx="12"
+        {/* ══ OFFLINE ZONE  y=10..182 ══════════════════════════════════════════ */}
+        <rect x="10" y="10" width="800" height="172" rx="12"
           fill="#fff8ee" stroke={AMBER} strokeWidth="2.5" strokeDasharray="8,5" />
         <text x="26" y="32" fontSize="10" fontWeight="700" fill={AMBER}
           letterSpacing="1.2" fontFamily="sans-serif">
           🧪  OFFLINE — DONE ONCE (LOCAL MACHINE)
         </text>
 
-        {/* Offline nodes */}
-        <N x={22}  y={44} w={130} h={64} color={GREY}  title="hour.csv"            sub="17,379 rows" />
-        <N x={207} y={44} w={150} h={64} color={RED}   title="Feature Engineering" sub="23 features" />
-        <N x={415} y={44} w={160} h={64} color={RED}   title="Train XGBoost"       sub="Classifier + Regressor" />
-        <N x={635} y={44} w={135} h={64} color={GREY}  title=".pkl files"          sub="classifier + regressor" />
+        {/* Offline nodes  —  centered at y=95  (y=61..129) */}
+        <N x={22}  y={61} w={130} color={GREY} title="hour.csv"            sub="17,379 rows" />
+        <N x={207} y={61} w={150} color={RED}  title="Feature Engineering" sub="23 features" />
+        <N x={415} y={61} w={160} color={RED}  title="Train XGBoost"       sub="Classifier + Regressor" />
+        <N x={635} y={61} w={135} color={GREY} title=".pkl files"          sub="classifier + regressor" />
 
-        {/* Offline arrows */}
-        <Arr x1={152} y1={76} x2={203} y2={76} color={GREY}  markerId="ah-grey"  label="clean + engineer" labelY={72} />
-        <Arr x1={357} y1={76} x2={411} y2={76} color={RED}   markerId="ah-red"   label="select features"  labelY={72} />
-        <Arr x1={575} y1={76} x2={631} y2={76} color={GREY}  markerId="ah-grey"  label="serialize"        labelY={72} />
+        {/*
+          Arrow labels are placed ABOVE the nodes (y=50) — in the clear header band —
+          so they never overlap node titles (nodes start at y=61).
+        */}
 
-        {/* ── Cross-zone connector: .pkl → FastAPI ────────────── */}
-        {/* .pkl center-bottom: x=702, y=108 → bend down to y=170, left to x=285, into FastAPI top */}
-        <ArrPath
-          d="M 702,108 L 702,172 L 285,172 L 285,202"
-          color={GREY} markerId="ah-grey"
-          label="loaded at startup"
-          labelX={494} labelY={169}
-        />
+        {/* hour.csv → Feature Engineering  (gap x=152..207, mid x=179) */}
+        <Line x1={154} y1={95} x2={203} y2={95} color={GREY} mid="grey" />
+        <Lbl  cx={179} cy={50} label="clean + engineer" color={GREY} />
 
-        {/* ── Runtime zone ─────────────────────────────────────── */}
-        <rect x="10" y="182" width="800" height="203" rx="12"
+        {/* Feature Engineering → Train XGBoost  (gap x=357..415, mid x=386) */}
+        <Line x1={359} y1={95} x2={411} y2={95} color={RED} mid="red" />
+        <Lbl  cx={386} cy={50} label="select features" color={RED} />
+
+        {/* Train → .pkl  (gap x=575..635, mid x=605) */}
+        <Line x1={577} y1={95} x2={631} y2={95} color={GREY} mid="grey" />
+        <Lbl  cx={605} cy={50} label="serialize" color={GREY} />
+
+        {/* ── Cross-zone connector  .pkl → FastAPI ─────────────────────────── */}
+        {/* .pkl center x=702, bottom y=129 → down to y=184 → left to x=281 → FastAPI top y=206 */}
+        <path d="M 702,129 L 702,186 L 281,186 L 281,208"
+          stroke={GREY} strokeWidth="2" fill="none"
+          strokeDasharray="7,4" markerEnd="url(#ah-grey)" />
+        {/* Label sits on the horizontal segment (y=186), with white bg so it's crisp */}
+        <Lbl cx={492} cy={186} label="loaded at startup" color={GREY} />
+
+        {/* ══ RUNTIME ZONE  y=196..408 ═════════════════════════════════════════ */}
+        <rect x="10" y="196" width="800" height="212" rx="12"
           fill="#eaf4fb" stroke={BLUE} strokeWidth="2.5" strokeDasharray="8,5" />
-        <text x="26" y="202" fontSize="10" fontWeight="700" fill={BLUE}
+        <text x="26" y="217" fontSize="10" fontWeight="700" fill={BLUE}
           letterSpacing="1.2" fontFamily="sans-serif">
           ☁️  RUNTIME — LIVE APP
         </text>
 
-        {/* Runtime nodes */}
-        <N    x={22}  y={212} w={118} h={64} color={GREY}   title="GitHub"         sub="source of truth" />
-        <N    x={195} y={207} w={158} h={74} color={GREEN}  title="FastAPI"        sub="Render.com" />
-        <N    x={420} y={212} w={148} h={64} color={BLUE}   title="React Frontend" sub="Vercel.com" />
-        <Pill x={625} y={212} w={115} h={64} color={GREY}   title="User"           />
-        <Pill x={420} y={306} w={148} h={52} color={PURPLE} title="Open-Meteo"     sub="weather API" />
+        {/* Runtime main row  —  centered at y=262  (y=228..296) */}
+        <N    x={22}  y={228} w={118} color={GREY}   title="GitHub"         sub="source of truth" />
+        <N    x={195} y={220} w={158} h={84} color={GREEN}  title="FastAPI" sub="Render.com" />
+        <N    x={415} y={228} w={148} color={BLUE}   title="React Frontend" sub="Vercel.com" />
+        <Pill x={625} y={228} w={112} color={GREY}   title="User" />
 
-        {/* Runtime arrows */}
+        {/* Open-Meteo below React  (y=326..380) */}
+        <Pill x={415} y={326} w={148} h={54} color={PURPLE} title="Open-Meteo" sub="weather API" />
 
-        {/* GitHub → FastAPI (deploy) */}
-        <Arr x1={140} y1={244} x2={191} y2={244}
-          color={GREY} markerId="ah-grey" label="auto-deploy" labelY={240} />
+        {/*
+          Arrow labels use Lbl badges (white bg + thin colored border) — placed
+          above their respective arrows so they never overlap node text.
+        */}
 
-        {/* FastAPI → React (prediction, upper arrow) */}
-        <Arr x1={353} y1={232} x2={416} y2={232}
-          color={GREEN} markerId="ah-green" label="prediction" labelY={228} />
+        {/* GitHub → FastAPI  (gap x=140..195, mid x=167)  */}
+        <Line x1={142} y1={262} x2={191} y2={262} color={GREY}  mid="grey"  />
+        <Lbl  cx={167} cy={251} label="auto-deploy" color={GREY} />
 
-        {/* React → FastAPI (inputs, lower arrow) */}
-        <Arr x1={416} y1={254} x2={353} y2={254}
-          color={BLUE} markerId="ah-blue" label="date + inputs" labelY={269} />
+        {/* FastAPI → React  prediction  (upper track, y=248)  gap x=353..415 mid x=384 */}
+        <Line x1={355} y1={248} x2={411} y2={248} color={GREEN} mid="green" />
+        <Lbl  cx={384} cy={237} label="prediction" color={GREEN} />
 
-        {/* User → React (uses) */}
-        <Arr x1={621} y1={244} x2={568} y2={244}
-          color={GREY} markerId="ah-grey" label="uses" labelY={240} />
+        {/* React → FastAPI  inputs  (lower track, y=276)  gap mid x=384 */}
+        <Line x1={413} y1={276} x2={357} y2={276} color={BLUE}  mid="blue"  />
+        <Lbl  cx={384} cy={289} label="date + inputs" color={BLUE} />
 
-        {/* Open-Meteo → React (live weather, going up) */}
-        <Arr x1={494} y1={306} x2={494} y2={276}
-          color={PURPLE} markerId="ah-purple"
-          label="live weather" labelX={540} labelY={296} labelAnchor="start" />
+        {/* User → React  (gap x=563..625 mid x=594) */}
+        <Line x1={623} y1={262} x2={567} y2={262} color={GREY}  mid="grey"  />
+        <Lbl  cx={594} cy={251} label="uses" color={GREY} />
+
+        {/* Open-Meteo → React  vertical  x=489  gap y=326..296 mid y=311 */}
+        <Line x1={489} y1={326} x2={489} y2={298} color={PURPLE} mid="purple" />
+        {/* Label to the right of the arrow so it doesn't clash with anything */}
+        <Lbl  cx={543} cy={314} label="live weather" color={PURPLE} />
 
       </svg>
     </div>
