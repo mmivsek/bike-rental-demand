@@ -363,8 +363,7 @@ export default function Charts() {
                 height={40}
               />
               <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
-              <Tooltip formatter={(v, name) => [name === 'avg_cnt' ? `${v} bikes/hr` : v, name === 'avg_cnt' ? 'Avg demand' : 'Hours in bin']} labelFormatter={v => `${v}°C`} />
-              <Bar dataKey="n" name="Hours in bin" fill="#ddd" isAnimationActive={false} yAxisId="right" hide />
+              <Tooltip formatter={(v) => [`${v} bikes/hr`, 'Avg demand']} labelFormatter={v => `${v}°C`} />
               <Line type="monotone" dataKey="avg_cnt" name="avg_cnt" stroke={ORANGE}
                 strokeWidth={3} dot={{ r: 3, fill: ORANGE }} isAnimationActive={false} />
               <ReferenceLine x={26} stroke="#aaa" strokeDasharray="4 3"
@@ -421,9 +420,9 @@ function CorrelationChart() {
     .map(f => ({ ...f, label: FEATURE_LABELS[f.name] || f.name }))
 
   const CustomBar = (props) => {
-    const { x, y, width, height, value } = props
+    const { x, y, width, height, payload } = props
     return <rect x={x} y={y} width={width} height={height}
-      fill={value >= 0 ? RED : BLUE} fillOpacity={0.75} rx={2} />
+      fill={payload.corr_cnt >= 0 ? RED : BLUE} fillOpacity={0.75} rx={2} />
   }
 
   return (
