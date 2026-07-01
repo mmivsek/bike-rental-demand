@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
-  LineChart, Line, ComposedChart, Bar,
+  LineChart, AreaChart, Area, BarChart, ScatterChart, Scatter,
+  Line, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ReferenceLine, Cell,
 } from 'recharts'
 
-const RED    = '#c0392b'
-const BLUE   = '#2980b9'
+const RED     = '#c0392b'
+const BLUE    = '#2980b9'
+const GREEN   = '#27ae60'
+const ORANGE  = '#e67e22'
+const PURPLE  = '#8e44ad'
+const TEAL    = '#16a085'
 
 // Box plot colours per season / weather (matching the Streamlit matplotlib style)
 const SEASON_FILL = {
@@ -254,6 +260,199 @@ export default function Charts() {
         </div>
       </div>
 
+      {/* ── Chart 4: Monthly trend + year-over-year ── */}
+      <div className="card">
+        <ChartTitle>Monthly demand — seasonal arc &amp; year-over-year growth</ChartTitle>
+        <ChartNote>
+          Demand peaks in summer (Jun–Sep) and troughs in winter. 2012 saw roughly 50 % more
+          rentals than 2011 across every month — system-wide growth as the network expanded.
+        </ChartNote>
+        <div className="chart-wrap">
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={data.monthly} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
+              <Tooltip formatter={(v, name) => [`${v} bikes/hr`, name]} />
+              <Legend />
+              <Bar dataKey="avg_2011" name="2011 avg" fill={BLUE} fillOpacity={0.7} isAnimationActive={false} />
+              <Bar dataKey="avg_2012" name="2012 avg" fill={RED}  fillOpacity={0.7} isAnimationActive={false} />
+              <Line type="monotone" dataKey="avg" name="2-yr avg" stroke="#333" strokeWidth={2}
+                dot={{ r: 3 }} strokeDasharray="5 3" isAnimationActive={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Chart 5: Casual vs Registered by hour ── */}
+      <div className="card">
+        <ChartTitle>Casual vs Registered riders — by hour of day</ChartTitle>
+        <ChartNote>
+          Registered riders (commuters) drive the sharp 8 am and 5–6 pm peaks.
+          Casual riders (tourists / leisure) ramp slowly and plateau through the afternoon.
+          The two populations behave almost independently.
+        </ChartNote>
+        <div className="chart-wrap">
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={data.hourly_users} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="gradReg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={RED}  stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={RED}  stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="gradCas" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={BLUE} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={BLUE} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="hr" tickFormatter={v => `${v}:00`} interval={2} tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
+              <Tooltip labelFormatter={v => `${v}:00`} formatter={(v, name) => [`${v} bikes/hr`, name]} />
+              <Legend />
+              <Area type="monotone" dataKey="registered" name="Registered" stroke={RED}
+                fill="url(#gradReg)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="casual" name="Casual" stroke={BLUE}
+                fill="url(#gradCas)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Chart 6: Day-of-week casual vs registered ── */}
+      <div className="card">
+        <ChartTitle>Average demand by day of week</ChartTitle>
+        <ChartNote>
+          Mid-week (Tue–Thu) shows the highest total demand driven by registered commuters.
+          Weekends flip the composition: casual riders nearly triple their share while
+          registered demand falls sharply.
+        </ChartNote>
+        <div className="chart-wrap">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data.weekday} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 13 }} />
+              <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
+              <Tooltip formatter={(v, name) => [`${v} bikes/hr`, name]} />
+              <Legend />
+              <Bar dataKey="avg_registered" name="Registered" stackId="a" fill={RED}  fillOpacity={0.8} isAnimationActive={false} />
+              <Bar dataKey="avg_casual"     name="Casual"     stackId="a" fill={BLUE} fillOpacity={0.8} isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Chart 7: Temperature vs demand ── */}
+      <div className="card">
+        <ChartTitle>Temperature vs average hourly demand</ChartTitle>
+        <ChartNote>
+          Demand rises steeply from 0 °C to ~26 °C, then flattens or slightly dips above
+          30 °C (heat discourages cycling). Temperature is among the strongest continuous
+          predictors in the XGBoost model (corr with cnt ≈ +0.40).
+        </ChartNote>
+        <div className="chart-wrap">
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={data.temp_vs_demand} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="temp_c" unit="°C" tick={{ fontSize: 12 }}
+                label={{ value: 'Temperature (°C)', position: 'insideBottom', offset: -4, style: { fontSize: 11, fill: '#999' } }}
+                height={40}
+              />
+              <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
+              <Tooltip formatter={(v, name) => [name === 'avg_cnt' ? `${v} bikes/hr` : v, name === 'avg_cnt' ? 'Avg demand' : 'Hours in bin']} labelFormatter={v => `${v}°C`} />
+              <Bar dataKey="n" name="Hours in bin" fill="#ddd" isAnimationActive={false} yAxisId="right" hide />
+              <Line type="monotone" dataKey="avg_cnt" name="avg_cnt" stroke={ORANGE}
+                strokeWidth={3} dot={{ r: 3, fill: ORANGE }} isAnimationActive={false} />
+              <ReferenceLine x={26} stroke="#aaa" strokeDasharray="4 3"
+                label={{ value: 'Peak ~26°C', position: 'top', fontSize: 10, fill: '#999' }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Chart 8: Feature correlation bar ── */}
+      <CorrelationChart />
+
+    </div>
+  )
+}
+
+// ── Feature correlation chart (loads science-data.json) ──────────────────
+function CorrelationChart() {
+  const [features, setFeatures] = useState(null)
+  useEffect(() => {
+    fetch('/science-data.json').then(r => r.json()).then(d => setFeatures(d.features)).catch(() => {})
+  }, [])
+  if (!features) return null
+
+  const FEATURE_LABELS = {
+    rush_workday:  'Rush × workday',
+    hr:            'Hour of day',
+    hr_cos:        'Hour (cos)',
+    hr_sin:        'Hour (sin)',
+    comfort:       'Comfort index',
+    temp:          'Temperature',
+    temp_workday:  'Temp × workday',
+    mnth:          'Month',
+    mnth_cos:      'Month (cos)',
+    mnth_sin:      'Month (sin)',
+    season:        'Season',
+    peak_season:   'Peak season',
+    yr:            'Year (2011/12)',
+    weathersit:    'Weather code',
+    bad_weather:   'Bad weather',
+    windspeed:     'Wind speed',
+    hum:           'Humidity',
+    rush_hour:     'Rush hour',
+    is_weekend:    'Is weekend',
+    is_night:      'Is night',
+    weekday:       'Weekday',
+    weekday_cos:   'Weekday (cos)',
+    weekday_sin:   'Weekday (sin)',
+    holiday:       'Holiday',
+  }
+
+  const sorted = [...features]
+    .sort((a, b) => b.corr_cnt - a.corr_cnt)
+    .map(f => ({ ...f, label: FEATURE_LABELS[f.name] || f.name }))
+
+  const CustomBar = (props) => {
+    const { x, y, width, height, value } = props
+    return <rect x={x} y={y} width={width} height={height}
+      fill={value >= 0 ? RED : BLUE} fillOpacity={0.75} rx={2} />
+  }
+
+  return (
+    <div className="card">
+      <ChartTitle>Feature correlations with rental count (Pearson r)</ChartTitle>
+      <ChartNote>
+        All 23 engineered features sorted by Pearson correlation with cnt.
+        Orange = positive (more → more bikes), blue = negative. The strongest single
+        predictor is <b>rush_workday</b> (rush hour on a working day) at r ≈ +0.58.
+      </ChartNote>
+      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: '0.8rem', color: '#555' }}>
+          <span style={{ display:'inline-block', width:12, height:12, background: RED, opacity:.75, borderRadius:2, marginRight:5, verticalAlign:'middle' }} />
+          Positive (boosts demand)
+        </span>
+        <span style={{ fontSize: '0.8rem', color: '#555' }}>
+          <span style={{ display:'inline-block', width:12, height:12, background: BLUE, opacity:.75, borderRadius:2, marginRight:5, verticalAlign:'middle' }} />
+          Negative (reduces demand)
+        </span>
+      </div>
+      <div className="chart-wrap" style={{ height: 480 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={sorted} layout="vertical" margin={{ top: 5, right: 40, left: 110, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+            <XAxis type="number" domain={[-0.55, 0.65]} tickFormatter={v => v.toFixed(1)}
+              tick={{ fontSize: 11 }} label={{ value: 'Pearson r', position: 'insideBottom', offset: -2, style: { fontSize: 11, fill: '#999' } }} height={30} />
+            <YAxis type="category" dataKey="label" width={108} tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(v) => [v.toFixed(3), 'Correlation with cnt']} />
+            <ReferenceLine x={0} stroke="#999" strokeWidth={1} />
+            <Bar dataKey="corr_cnt" isAnimationActive={false} shape={<CustomBar />} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
