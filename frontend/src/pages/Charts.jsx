@@ -154,8 +154,12 @@ export default function Charts() {
   if (loading) return <div className="placeholder"><div className="placeholder-icon">&#x23F3;</div><p>Loading…</p></div>
   if (error)   return <div className="error-box">{error}</div>
 
-  const sMax = data.seasonal_box[0]?.max_val ?? 1000
-  const wMax = data.weather_box[0]?.max_val  ?? 1000
+  const sMax         = data.seasonal_box?.[0]?.max_val ?? 1000
+  const wMax         = data.weather_box?.[0]?.max_val  ?? 1000
+  const monthly      = data.monthly       || []
+  const weekday      = data.weekday       || []
+  const hourlyUsers  = data.hourly_users  || []
+  const tempDemand   = data.temp_vs_demand || []
 
   return (
     <div>
@@ -269,7 +273,7 @@ export default function Charts() {
         </ChartNote>
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={data.monthly} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+            <ComposedChart data={monthly} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
@@ -294,7 +298,7 @@ export default function Charts() {
         </ChartNote>
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data.hourly_users} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+            <AreaChart data={hourlyUsers} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="gradReg" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={RED}  stopOpacity={0.25} />
@@ -329,7 +333,7 @@ export default function Charts() {
         </ChartNote>
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data.weekday} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+            <BarChart data={weekday} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
               <XAxis dataKey="day" tick={{ fontSize: 13 }} />
               <YAxis tick={{ fontSize: 12 }} unit=" bikes" width={72} />
@@ -352,7 +356,7 @@ export default function Charts() {
         </ChartNote>
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={data.temp_vs_demand} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+            <ComposedChart data={tempDemand} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="temp_c" unit="°C" tick={{ fontSize: 12 }}
                 label={{ value: 'Temperature (°C)', position: 'insideBottom', offset: -4, style: { fontSize: 11, fill: '#999' } }}
