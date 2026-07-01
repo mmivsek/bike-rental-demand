@@ -376,6 +376,9 @@ export default function Charts() {
       {/* ── Chart 8: Feature correlation bar ── */}
       <CorrelationChart />
 
+      {/* ── Chart 9: Feature-vs-feature heatmap ── */}
+      <CorrelationHeatmap features={data.corr_features || []} matrix={data.corr_matrix || []} />
+
     </div>
   )
 }
@@ -455,6 +458,110 @@ function CorrelationChart() {
             <Bar dataKey="corr_cnt" isAnimationActive={false} shape={<CustomBar />} />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ── Feature-vs-feature correlation heatmap ────────────────────────────────
+const FEAT_LABELS = {
+  rush_workday:'rush×workday', hr:'hour', yr:'year', hr_cos:'hr(cos)',
+  hr_sin:'hr(sin)', season:'season', temp:'temp', mnth:'month',
+  comfort:'comfort', temp_workday:'temp×wday', mnth_cos:'mnth(cos)',
+  mnth_sin:'mnth(sin)', peak_season:'peak ssn', weathersit:'weather',
+  bad_weather:'bad wthr', windspeed:'wind', hum:'humidity',
+  rush_hour:'rush hr', is_weekend:'weekend', is_night:'night',
+  weekday:'weekday', weekday_cos:'wday(cos)', weekday_sin:'wday(sin)',
+}
+
+function CorrelationHeatmap({ features, matrix }) {
+  const [hover, setHover] = useState(null)
+  if (!features.length || !matrix.length) return null
+
+  const n    = features.length
+  const CELL = 26
+  const PAD  = 80  // left label space
+  const TOP  = 80  // top label space
+  const W    = PAD + n * CELL
+  const H    = TOP + n * CELL
+
+  const rToColor = (r) => {
+    if (r === null) return '#f8f9fa'
+    const abs = Math.abs(r)
+    if (r > 0) return `rgba(192,57,43,${0.08 + abs * 0.92})`
+    return `rgba(41,128,185,${0.08 + abs * 0.92})`
+  }
+
+  const lookup = {}
+  matrix.forEach(d => { lookup[`${d.row}|${d.col}`] = d.r })
+
+  return (
+    <div className="card">
+      <ChartTitle>Feature correlation matrix (23 × 23)</ChartTitle>
+      <ChartNote>
+        Pearson r between every pair of engineered features. Red = positive correlation,
+        blue = negative. Strong diagonals reveal redundant features (e.g. hr_sin / hr_cos).
+        The lower triangle mirrors the upper — only one is shown.
+      </ChartNote>
+      <div style={{ overflowX: 'auto' }}>
+        <svg width={W} height={H} style={{ display: 'block', margin: '0 auto', fontSize: 9 }}>
+          {/* Column labels (rotated) */}
+          {features.map((f, j) => (
+            <text key={f}
+              x={PAD + j * CELL + CELL / 2} y={TOP - 4}
+              textAnchor="start" fontSize={8.5} fill="#555"
+              transform={`rotate(-45, ${PAD + j * CELL + CELL / 2}, ${TOP - 4})`}
+            >
+              {FEAT_LABELS[f] || f}
+            </text>
+          ))}
+          {/* Row labels + cells */}
+          {features.map((fi, i) => (
+            <g key={fi}>
+              <text x={PAD - 4} y={TOP + i * CELL + CELL * 0.65}
+                textAnchor="end" fontSize={8.5} fill="#555">
+                {FEAT_LABELS[fi] || fi}
+              </text>
+              {features.map((fj, j) => {
+                const r = lookup[`${fi}|${fj}`]
+                const isHovered = hover && hover.fi === fi && hover.fj === fj
+                return (
+                  <rect key={fj}
+                    x={PAD + j * CELL} y={TOP + i * CELL}
+                    width={CELL - 1} height={CELL - 1}
+                    fill={rToColor(r)}
+                    stroke={isHovered ? '#333' : 'none'} strokeWidth={1.5}
+                    rx={2}
+                    onMouseEnter={() => r !== null && setHover({ fi, fj, r })}
+                    onMouseLeave={() => setHover(null)}
+                    style={{ cursor: r !== null ? 'crosshair' : 'default' }}
+                  />
+                )
+              })}
+            </g>
+          ))}
+          {/* Hover label */}
+          {hover && (
+            <text x={PAD} y={H - 4} fontSize={10} fill="#333" fontWeight={600}>
+              {(FEAT_LABELS[hover.fi] || hover.fi)} × {(FEAT_LABELS[hover.fj] || hover.fj)}: r = {hover.r.toFixed(3)}
+            </text>
+          )}
+        </svg>
+      </div>
+      {/* Color scale legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 12, fontSize: '0.75rem', color: '#666' }}>
+        <span>−1.0 strong negative</span>
+        <svg width={160} height={14}>
+          <defs>
+            <linearGradient id="heatGrad">
+              <stop offset="0%"   stopColor="rgba(41,128,185,1)" />
+              <stop offset="50%"  stopColor="rgba(248,249,250,1)" />
+              <stop offset="100%" stopColor="rgba(192,57,43,1)" />
+            </linearGradient>
+          </defs>
+          <rect x={0} y={0} width={160} height={14} fill="url(#heatGrad)" rx={3} />
+        </svg>
+        <span>+1.0 strong positive</span>
       </div>
     </div>
   )

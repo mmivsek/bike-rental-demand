@@ -718,7 +718,10 @@ pipeline.predict(X_test)           # scaler .transform() applied here, no leakag
         </div>
       </div>
 
-      {/* ── 11. Actual vs predicted ── */}
+      {/* ── 11. Confusion matrix ── */}
+      {data.confusion_matrix && <ConfusionMatrixCard cm={data.confusion_matrix} />}
+
+      {/* ── 12. Actual vs predicted ── */}
       <div className="card">
         <SectionTitle>Regression — actual vs predicted (300 sample points)</SectionTitle>
         <Note>
@@ -765,6 +768,86 @@ pipeline.predict(X_test)           # scaler .transform() applied here, no leakag
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ── Confusion Matrix card ─────────────────────────────────────────────────
+function ConfusionMatrixCard({ cm }) {
+  const { tn, fp, fn, tp, precision, recall, f1, n_low, n_high } = cm
+  const total = tn + fp + fn + tp
+
+  const CMCell = ({ value, pct, label, color }) => (
+    <div style={{
+      background: color, borderRadius: 8, padding: '18px 12px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+    }}>
+      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>
+        {value.toLocaleString()}
+      </div>
+      <div style={{ fontSize: '0.78rem', color: 'white', opacity: 0.85 }}>
+        {(pct * 100).toFixed(1)} %
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'white', opacity: 0.7, textAlign: 'center', marginTop: 2 }}>
+        {label}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="card">
+      <SectionTitle>Classification — confusion matrix (test set)</SectionTitle>
+      <Note>
+        The 2×2 confusion matrix breaks down every prediction on the held-out test set.
+        Rows = actual class · columns = predicted class · threshold = 142 bikes/hr (median).
+        Errors are symmetric: the model is equally likely to mislabel in either direction.
+      </Note>
+
+      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        {/* Grid */}
+        <div style={{ flex: '0 0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr', gap: 6, marginBottom: 4 }}>
+            <div />
+            <div style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#555' }}>Predicted LOW</div>
+            <div style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#555' }}>Predicted HIGH</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr', gap: 6, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#555' }}>Actual LOW</div>
+            <CMCell value={tn} pct={tn/total} label="True Negative ✅" color="#27ae60" />
+            <CMCell value={fp} pct={fp/total} label="False Positive ❌ false alarm" color="#e74c3c" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#555' }}>Actual HIGH</div>
+            <CMCell value={fn} pct={fn/total} label="False Negative ❌ miss" color="#e74c3c" />
+            <CMCell value={tp} pct={tp/total} label="True Positive ✅" color="#27ae60" />
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: 8, textAlign: 'center' }}>
+            n = {total.toLocaleString()} test hours
+          </div>
+        </div>
+
+        {/* Derived metrics */}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#333', marginBottom: 12 }}>Derived metrics</div>
+          {[
+            { label: 'Accuracy',        value: `${((tn+tp)/total*100).toFixed(1)} %`, sub: `${(tn+tp).toLocaleString()} / ${total.toLocaleString()} correct`, color: '#27ae60' },
+            { label: 'Precision',       value: `${(precision*100).toFixed(1)} %`,      sub: 'of "high" predictions that were correct', color: '#2980b9' },
+            { label: 'Recall',          value: `${(recall*100).toFixed(1)} %`,          sub: 'of actual high-demand hours caught',      color: '#8e44ad' },
+            { label: 'F1 Score',        value: f1.toFixed(3),                           sub: 'harmonic mean of precision & recall',     color: '#e67e22' },
+            { label: 'False alarm rate',value: `${(fp/n_low*100).toFixed(1)} %`,        sub: 'low-demand hours labelled "high"',        color: '#e74c3c' },
+            { label: 'Miss rate',       value: `${(fn/n_high*100).toFixed(1)} %`,       sub: 'high-demand hours labelled "low"',        color: '#e74c3c' },
+          ].map(m => (
+            <div key={m.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              padding: '7px 0', borderBottom: '1px solid #f0f0f0' }}>
+              <div>
+                <span style={{ fontSize: '0.82rem', color: '#555' }}>{m.label}</span>
+                <div style={{ fontSize: '0.72rem', color: '#aaa' }}>{m.sub}</div>
+              </div>
+              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: m.color, minWidth: 60, textAlign: 'right' }}>{m.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

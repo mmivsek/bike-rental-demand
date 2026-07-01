@@ -69,8 +69,8 @@
       "corr_cnt": -0.518,
       "corr_demand": -0.559,
       "lasso_coef": -17.7466,
-      "clf_importance": 0.0,
-      "reg_importance": 0.0
+      "clf_importance": 0,
+      "reg_importance": 0
     },
     {
       "name": "is_weekend",
@@ -86,7 +86,7 @@
       "group": "Temporal",
       "corr_cnt": 0.121,
       "corr_demand": 0.13,
-      "lasso_coef": -0.0,
+      "lasso_coef": 0,
       "clf_importance": 0.0266,
       "reg_importance": 0.0106
     },
@@ -113,7 +113,7 @@
       "group": "Derived",
       "corr_cnt": 0.186,
       "corr_demand": 0.178,
-      "lasso_coef": 0.0,
+      "lasso_coef": 0,
       "clf_importance": 0.0074,
       "reg_importance": 0.005
     },
@@ -299,7 +299,7 @@
     },
     {
       "feature": "is_night",
-      "importance": 0.0
+      "importance": 0
     }
   ],
   "reg_importance_ranked": [
@@ -393,7 +393,7 @@
     },
     {
       "feature": "is_night",
-      "importance": 0.0
+      "importance": 0
     }
   ],
   "clf_comparison": [
@@ -423,7 +423,7 @@
       "model": "Dummy",
       "r2": -0.001,
       "mae": 140.5,
-      "rmse": 178.0
+      "rmse": 178
     },
     {
       "model": "Ridge",
@@ -1838,5 +1838,16 @@
       "std": 0.5
     }
   },
-  "avg_cnt": 189.5
+  "avg_cnt": 189.5,
+  "confusion_matrix": {
+    "tn": 1234,
+    "fp": 66,
+    "fn": 63,
+    "tp": 1244,
+    "precision": 0.95,
+    "recall": 0.952,
+    "f1": 0.951,
+    "n_low": 1300,
+    "n_high": 1307
+  }
 }
