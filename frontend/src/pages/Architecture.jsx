@@ -23,10 +23,10 @@ const STACK = [
     group: 'Backend',
     color: '#27ae60',
     items: [
-      { name: 'FastAPI 0.115',       role: 'REST API — async, auto-docs at /docs' },
-      { name: 'uvicorn',             role: 'ASGI server — runs FastAPI in production' },
-      { name: 'Python 3.11',         role: 'Pinned via .python-version for wheel compat' },
-      { name: 'pydantic',            role: 'Request/response validation + serialisation' },
+      { name: 'FastAPI 0.115',     role: 'REST API — async, auto-docs at /docs' },
+      { name: 'uvicorn',           role: 'ASGI server — runs FastAPI in production' },
+      { name: 'Python 3.11',       role: 'Pinned via .python-version for wheel compat' },
+      { name: 'pydantic',          role: 'Request/response validation + serialisation' },
     ],
   },
   {
@@ -51,22 +51,22 @@ const STACK = [
     group: 'Deployment',
     color: '#8e44ad',
     items: [
-      { name: 'GitHub',       role: 'Source of truth — pushes trigger both Vercel and Render' },
-      { name: 'Vercel',       role: 'Hosts static frontend — auto-deploys on every push to master' },
-      { name: 'Render.com',   role: 'Hosts FastAPI backend — free tier, sleeps after 15 min idle' },
+      { name: 'GitHub',     role: 'Source of truth — pushes trigger both Vercel and Render' },
+      { name: 'Vercel',     role: 'Hosts static frontend — auto-deploys on every push to master' },
+      { name: 'Render.com', role: 'Hosts FastAPI backend — free tier, sleeps after 15 min idle' },
     ],
   },
 ]
 
 const FILES = [
-  { path: 'train_save_models.py',       lines: 147,  role: 'Offline training — fits both XGBoost pipelines, saves .pkl + metadata.json' },
-  { path: 'api/main.py',                lines: 169,  role: 'FastAPI backend — loads models at startup, serves /predict and /predict-day' },
-  { path: 'generate_science_data.py',   lines: 180,  role: 'Extracts importances, correlations, stats into science-data.json for the UI' },
-  { path: 'frontend/src/pages/Predictor.jsx', lines: 771, role: 'Main prediction UI — date picker, weather, day chart, deviation explainer' },
-  { path: 'frontend/src/pages/Science.jsx',   lines: 770, role: 'ML & Science page — sklearn API, train/test split, dummy baseline, leakage' },
-  { path: 'frontend/src/pages/Charts.jsx',    lines: 259, role: 'Demand Patterns — hourly, monthly, seasonal, weekday charts' },
-  { path: 'frontend/src/pages/About.jsx',     lines: 155, role: 'Dataset background, column reference, station map' },
-  { path: 'frontend/src/index.css',           lines: 700, role: 'Single CSS file — all design tokens, layouts, components' },
+  { path: 'train_save_models.py',              lines: 147, role: 'Offline training — fits both XGBoost pipelines, saves .pkl + metadata.json' },
+  { path: 'api/main.py',                       lines: 169, role: 'FastAPI backend — loads models at startup, serves /predict and /predict-day' },
+  { path: 'generate_science_data.py',          lines: 180, role: 'Extracts importances, correlations, stats into science-data.json for the UI' },
+  { path: 'frontend/src/pages/Predictor.jsx',  lines: 771, role: 'Main prediction UI — date picker, weather, day chart, deviation explainer' },
+  { path: 'frontend/src/pages/Science.jsx',    lines: 770, role: 'ML & Science page — sklearn API, train/test split, dummy baseline, leakage' },
+  { path: 'frontend/src/pages/Charts.jsx',     lines: 259, role: 'Demand Patterns — hourly, monthly, seasonal, weekday charts' },
+  { path: 'frontend/src/pages/About.jsx',      lines: 155, role: 'Dataset background, column reference, station map' },
+  { path: 'frontend/src/index.css',            lines: 700, role: 'Single CSS file — all design tokens, layouts, components' },
 ]
 
 const DECISIONS = [
@@ -102,89 +102,144 @@ const DECISIONS = [
   },
 ]
 
-// ── Architecture flow diagram ─────────────────────────────────────────────────
+// ── Flowchart node helpers ────────────────────────────────────────────────────
+const NODE_W = 148
+const NODE_H = 62
+
+function RectNode({ icon, label, sub, color, bg }) {
+  return (
+    <div style={{
+      width: NODE_W, minHeight: NODE_H,
+      border: `2px solid ${color}`, borderRadius: 8,
+      background: bg || '#fff',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '8px 10px', textAlign: 'center',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    }}>
+      {icon && <div style={{ fontSize: '1.2rem', marginBottom: 2 }}>{icon}</div>}
+      <div style={{ fontWeight: 700, fontSize: '0.78rem', color, lineHeight: 1.25 }}>{label}</div>
+      {sub && <div style={{ fontSize: '0.68rem', color: '#888', marginTop: 3, lineHeight: 1.2 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function OvalNode({ icon, label, sub, color }) {
+  return (
+    <div style={{
+      width: NODE_W, minHeight: NODE_H,
+      border: `2px solid ${color}`, borderRadius: 32,
+      background: '#fff',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '8px 10px', textAlign: 'center',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    }}>
+      {icon && <div style={{ fontSize: '1.2rem', marginBottom: 2 }}>{icon}</div>}
+      <div style={{ fontWeight: 700, fontSize: '0.78rem', color, lineHeight: 1.25 }}>{label}</div>
+      {sub && <div style={{ fontSize: '0.68rem', color: '#888', marginTop: 3, lineHeight: 1.2 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function Arrow({ label, dir = 'right' }) {
+  const isRight = dir === 'right'
+  const isLeft  = dir === 'left'
+  const isDown  = dir === 'down'
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: isDown ? 'column' : 'row',
+      alignItems: 'center', justifyContent: 'center',
+      gap: 3,
+      color: '#999', fontSize: '0.65rem',
+      flexShrink: 0,
+      ...(isDown ? { height: 44 } : { width: 56 }),
+    }}>
+      {isLeft  && <span style={{ fontSize: '0.9rem' }}>←</span>}
+      {isDown  && <div style={{ width: 1, flex: 1, background: '#ccc', margin: '0 auto' }} />}
+      {label && <span style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>{label}</span>}
+      {isRight && <span style={{ fontSize: '0.9rem' }}>→</span>}
+      {isDown  && <span style={{ fontSize: '0.9rem', textAlign: 'center' }}>↓</span>}
+    </div>
+  )
+}
+
+// ── Architecture diagram ──────────────────────────────────────────────────────
 function ArchDiagram() {
-  const box = (label, sub, color) => (
-    <div style={{
-      border: `2px solid ${color}`,
-      borderRadius: 8, padding: '10px 14px', background: '#fff',
-      minWidth: 140, textAlign: 'center',
-    }}>
-      <div style={{ fontWeight: 700, fontSize: '0.88rem', color }}>{label}</div>
-      {sub && <div style={{ fontSize: '0.72rem', color: '#888', marginTop: 3 }}>{sub}</div>}
-    </div>
-  )
-  const arrow = (label, vertical = false) => (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#bbb', fontSize: '0.72rem', gap: 4,
-      flexDirection: vertical ? 'column' : 'row',
-    }}>
-      {!vertical && <span style={{ fontSize: '1.1rem' }}>→</span>}
-      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
-      {vertical && <span style={{ fontSize: '1.1rem' }}>↓</span>}
-    </div>
-  )
+  const AMBER  = '#f39c12'
+  const BLUE   = '#2980b9'
+  const GREY   = '#6c757d'
+  const RED    = '#c0392b'
+  const GREEN  = '#27ae60'
+  const PURPLE = '#8e44ad'
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      {/* Offline zone */}
+    <div style={{ overflowX: 'auto', padding: '4px 0' }}>
+
+      {/* ── Offline subgraph ── */}
       <div style={{
-        border: '2px dashed #f39c12', borderRadius: 10, padding: '16px 20px',
-        background: '#fef9e7', marginBottom: 16,
+        border: `2px dashed ${AMBER}`, borderRadius: 12,
+        background: '#fef9e7', padding: '14px 18px',
+        marginBottom: 0,
       }}>
-        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#f39c12', marginBottom: 12 }}>
+        <div style={{
+          fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.07em', color: AMBER, marginBottom: 12,
+        }}>
           🧪 Offline — done once (local machine)
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {box('hour.csv', '17,379 rows', '#6c757d')}
-          {arrow('clean + engineer')}
-          {box('Feature Engineering', '23 features', '#e67e22')}
-          {arrow('Lasso + Pearson')}
-          {box('XGBoost Classifier', 'demand_high (0/1)', '#c0392b')}
-          {arrow('+ fit')}
-          {box('classifier.pkl', 'saved model', '#6c757d')}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-          <div style={{ minWidth: 140 }} />
-          {arrow('')}
-          <div style={{ minWidth: 140 }} />
-          {arrow('Lasso + Pearson')}
-          {box('XGBoost Regressor', 'cnt (bikes/hr)', '#e67e22')}
-          {arrow('+ fit')}
-          {box('regressor.pkl', 'saved model', '#6c757d')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'nowrap' }}>
+          <RectNode icon="📦" label="Capital Bikeshare" sub="hour.csv · 17,379 rows" color={GREY} />
+          <Arrow label="clean" />
+          <RectNode icon="🔧" label="Feature Engineering" sub="23 features selected" color={RED} />
+          <Arrow label="Lasso + Pearson" />
+          <RectNode icon="🤖" label="Train XGBoost" sub="Classifier + Regressor" color={RED} />
+          <Arrow label="serialize" />
+          <RectNode icon="💾" label="classifier.pkl" sub="regressor.pkl" color={GREY} bg="#f8f9fa" />
         </div>
       </div>
 
-      {/* Runtime zone */}
+      {/* Cross-zone connector */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 18 + NODE_W / 2 + 6, margin: '0' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ width: 2, height: 28, background: '#ccc' }} />
+          <div style={{ fontSize: '0.62rem', color: '#aaa', whiteSpace: 'nowrap', margin: '1px 0' }}>loaded at startup</div>
+          <div style={{ fontSize: '0.85rem', color: '#ccc' }}>↓</div>
+        </div>
+      </div>
+
+      {/* ── Runtime subgraph ── */}
       <div style={{
-        border: '2px dashed #2980b9', borderRadius: 10, padding: '16px 20px',
-        background: '#eaf4fb',
+        border: `2px dashed ${BLUE}`, borderRadius: 12,
+        background: '#eaf4fb', padding: '14px 18px',
+        marginTop: 0,
       }}>
-        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#2980b9', marginBottom: 12 }}>
+        <div style={{
+          fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.07em', color: BLUE, marginBottom: 12,
+        }}>
           ☁️ Runtime — live app
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {box('GitHub', 'source of truth', '#6c757d')}
-          {arrow('auto-deploy')}
-          {box('FastAPI', 'Render.com · loads .pkl at startup', '#27ae60')}
-          {arrow('prediction')}
-          {box('React', 'Vercel.com · static build', '#2980b9')}
-          {arrow('uses')}
-          {box('User', '', '#6c757d')}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-          <div style={{ minWidth: 140 }} />
-          <div style={{ minWidth: 60 }} />
-          <div style={{ minWidth: 140 }} />
-          {arrow('← inputs')}
-          <div style={{ minWidth: 140 }} />
-          {arrow('live weather')}
-          {box('Open-Meteo API', 'no key needed', '#8e44ad')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'nowrap' }}>
+          <OvalNode icon="🌤️" label="Open-Meteo API" sub="live weather" color={PURPLE} />
+          <Arrow label="live weather" />
+          <RectNode icon="🖥️" label="React Frontend" sub="Vercel.com" color={BLUE} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: 56, flexShrink: 0 }}>
+            <div style={{ fontSize: '0.65rem', color: '#999', textAlign: 'center', whiteSpace: 'nowrap' }}>date + inputs</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: '0.9rem', color: '#999' }}>→</span>
+              <span style={{ fontSize: '0.9rem', color: '#999' }}>←</span>
+            </div>
+            <div style={{ fontSize: '0.65rem', color: '#999', textAlign: 'center', whiteSpace: 'nowrap' }}>prediction</div>
+          </div>
+          <RectNode icon="⚙️" label="FastAPI Backend" sub="Render.com" color={GREEN} />
+          <Arrow label="" />
+          <OvalNode icon="🙋" label="User" color={GREY} />
         </div>
       </div>
 
-      <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: 8, textAlign: 'right' }}>
+      <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: 8, textAlign: 'right' }}>
         .pkl files are committed to GitHub and loaded by FastAPI on every Render startup
       </div>
     </div>
@@ -206,26 +261,39 @@ export default function Architecture() {
         ))}
       </div>
 
-      {/* Architecture diagram */}
+      {/* ── 1. Architecture diagram ── */}
       <div className="card">
         <div className="section-title">System architecture</div>
         <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 16 }}>
-          Training is done once offline. The serialised models are committed to GitHub and loaded
-          by the FastAPI backend at startup on Render. The React frontend on Vercel communicates
-          with the backend and fetches live weather from Open-Meteo for the predictor page.
+          Training is done <strong>once offline</strong> on a local machine. The serialised model files are committed
+          to GitHub and loaded by the FastAPI backend at startup on Render. The React frontend on Vercel
+          fetches live weather from Open-Meteo and sends user inputs to the backend for inference.
         </p>
         <ArchDiagram />
-        <div className="alert-info" style={{ marginTop: 16 }}>
-          <b>Written explanation:</b> Both models are trained offline on a local machine using the Capital Bikeshare dataset
-          (17,379 rows, 2011–2012), then serialised to <code>classifier.pkl</code> and <code>regressor.pkl</code>.
-          These files are committed to GitHub and loaded by the FastAPI backend at startup on Render.com — no training happens at runtime.
-          When a user opens the React frontend (hosted on Vercel), they pick a date and weather conditions;
-          the frontend also fetches live weather from Open-Meteo to auto-fill inputs.
-          The inputs are sent to FastAPI, which runs both models and returns a demand level and hourly count — one inference per request.
-        </div>
       </div>
 
-      {/* Tech stack */}
+      {/* ── 2. Written explanation ── */}
+      <div className="card">
+        <div className="section-title">Written explanation</div>
+        <p style={{ fontSize: '0.9rem', lineHeight: 1.75, color: '#444' }}>
+          Both models — an XGBoost Classifier (predicting demand level) and an XGBoost Regressor
+          (predicting hourly rental count) — are trained <strong>offline, once</strong>, on a local
+          machine using the Capital Bikeshare dataset (17,379 rows, 2011–2012). Training applies Lasso
+          and Pearson feature selection and fits scikit-learn Pipelines (StandardScaler → XGBoost), then
+          serialises the fitted pipelines to <code>classifier.pkl</code> and <code>regressor.pkl</code>.
+        </p>
+        <p style={{ fontSize: '0.9rem', lineHeight: 1.75, color: '#444', marginTop: 10 }}>
+          These model files are committed to GitHub and <strong>loaded by the FastAPI backend at startup
+          on Render.com</strong> — no training ever happens at runtime. When a user opens the React
+          frontend (hosted on Vercel), they select a date and weather conditions; the frontend also
+          fetches live weather from the Open-Meteo API to auto-fill those inputs. The user's inputs are
+          sent to the FastAPI backend, which runs both models and returns the predicted demand level and
+          hourly rental count — <strong>inference happens entirely in the backend, on every prediction
+          request</strong>.
+        </p>
+      </div>
+
+      {/* ── 3. Tech stack ── */}
       <div className="card">
         <div className="section-title">Tech stack</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -257,7 +325,7 @@ export default function Architecture() {
         </div>
       </div>
 
-      {/* Key source files */}
+      {/* ── 4. Key source files ── */}
       <div className="card">
         <div className="section-title">Key source files</div>
         <div className="table-wrap">
@@ -286,7 +354,7 @@ export default function Architecture() {
         </div>
       </div>
 
-      {/* Key engineering decisions */}
+      {/* ── 5. Key engineering decisions ── */}
       <div className="card">
         <div className="section-title">Key engineering decisions</div>
         <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 16 }}>
@@ -302,7 +370,7 @@ export default function Architecture() {
         </div>
       </div>
 
-      {/* Deployment flow */}
+      {/* ── 6. Deployment workflow ── */}
       <div className="card">
         <div className="section-title">Deployment workflow</div>
         <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 16 }}>
@@ -310,7 +378,7 @@ export default function Architecture() {
         </p>
         <div className="step-list">
           {[
-            ['Edit code locally',      'Make changes to frontend (React) or backend (FastAPI) in the local dev environment. Frontend runs on Vite (localhost:5173–5175), backend on uvicorn (localhost:8000).'],
+            ['Edit code locally',      'Make changes to frontend (React) or backend (FastAPI) in the local dev environment. Frontend runs on Vite (localhost:5173), backend on uvicorn (localhost:8000).'],
             ['git push to GitHub',     'Push to the master branch on GitHub. This is the only manual deployment trigger — both platforms watch this branch.'],
             ['Vercel auto-deploys',    'Vercel detects the push, runs cd frontend && npm run build, and publishes the new static bundle to its global CDN. Typically live within ~30 seconds.'],
             ['Render auto-deploys',    'Render detects the push, installs api/requirements.txt, and restarts uvicorn with the new code. Python 3.11 is pinned via .python-version for fast wheel installs (~90s total build).'],
@@ -325,6 +393,39 @@ export default function Architecture() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── 7. Mermaid source ── */}
+      <div className="card">
+        <div className="section-title">Mermaid diagram source</div>
+        <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 12 }}>
+          The flowchart above rendered as Mermaid markup — paste into <a href="https://mermaid.live" target="_blank" rel="noopener noreferrer" style={{ color: '#2980b9' }}>mermaid.live</a> to regenerate.
+        </p>
+        <pre style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: 8, padding: 16, fontSize: '0.82rem', lineHeight: 1.6, overflowX: 'auto', color: '#333' }}>{`flowchart LR
+    subgraph Offline["🧪 Offline — done once (local machine)"]
+        RAW[("📦 Capital Bikeshare\\nhour.csv · 17,379 rows")]
+        CLEAN["🔧 Clean &\\nFeature Engineering"]
+        TRAIN["🤖 Train XGBoost\\nClassifier + Regressor"]
+        MODEL["💾 classifier.pkl\\nregressor.pkl"]
+        RAW --> CLEAN --> TRAIN --> MODEL
+    end
+
+    subgraph Runtime["☁️ Runtime — live app"]
+        WEATHER(["🌤️ Open-Meteo\\nWeather API"])
+        BACKEND["⚙️ FastAPI Backend\\nRender.com\\nLoads models at startup"]
+        FRONTEND["🖥️ React Frontend\\nVercel.com"]
+        USER(["🙋 User"])
+
+        WEATHER -->|"live weather"| FRONTEND
+        USER --> FRONTEND
+        FRONTEND -->|"date + weather inputs"| BACKEND
+        BACKEND -->|"demand prediction"| FRONTEND
+    end
+
+    MODEL -->|"loaded at startup"| BACKEND
+
+    style Offline fill:#fef9e7,stroke:#f39c12,stroke-width:2px
+    style Runtime fill:#eaf4fb,stroke:#2980b9,stroke-width:2px`}</pre>
       </div>
     </div>
   )
