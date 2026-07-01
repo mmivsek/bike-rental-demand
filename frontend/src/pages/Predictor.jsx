@@ -302,15 +302,21 @@ function DayForecastChart({ selectedDate, weathersit, tempC, humPct, windKmh, cu
             {dayData && (
               <Line type="monotone" dataKey="s0"
                 name={SCENARIO_LABELS[0]}
-                stroke={SCENARIO_COLORS[0]} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                stroke={SCENARIO_COLORS[0]} strokeWidth={2.5}
+                strokeDasharray="none"
+                dot={false} isAnimationActive={false} />
             )}
-            {comparisons.map((c, i) =>
-              compResults[c.id] ? (
+            {comparisons.map((c, i) => {
+              // Each comparison gets a distinct dash pattern so overlapping lines stay visible
+              const dashes = ['6 3', '2 3', '8 3 2 3']
+              return compResults[c.id] ? (
                 <Line key={c.id} type="monotone" dataKey={`s${c.id}`}
                   name={SCENARIO_LABELS[i + 1]}
-                  stroke={SCENARIO_COLORS[i + 1]} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                  stroke={SCENARIO_COLORS[i + 1]} strokeWidth={2.5}
+                  strokeDasharray={dashes[i] ?? '6 3'}
+                  dot={false} isAnimationActive={false} />
               ) : null
-            )}
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
